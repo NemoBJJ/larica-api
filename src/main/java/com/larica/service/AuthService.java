@@ -4,7 +4,6 @@ import com.larica.entity.Usuario;
 import com.larica.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
-import java.util.Optional;
 
 @Service
 public class AuthService {
@@ -22,9 +21,9 @@ public class AuthService {
         return usuarioRepository.save(usuario);
     }
 
-    // Método de login simplificado (sem segurança)
     public boolean login(String email, String senha) {
-        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
-        return usuarioOpt.isPresent() && usuarioOpt.get().getSenha().equals(senha);
+        return usuarioRepository.findByEmail(email)
+            .map(usuario -> usuario.getSenha().equals(senha))
+            .orElse(false);
     }
 }

@@ -3,7 +3,10 @@ package com.larica.service;
 import com.larica.dto.*;
 import com.larica.entity.*;
 import com.larica.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import com.larica.dto.PedidoRestauranteDTO.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -31,7 +34,8 @@ public class PedidoService {
         this.restauranteRepository = restauranteRepository;
     }
 
-    // Método usado pelo seu controller (não mudei)
+    // ========== MÉTODOS EXISTENTES (USUÁRIO) ==========
+    
     public Pedido criarPedido(Long usuarioId, Long restauranteId, List<ItemPedido> itens) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
             .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
@@ -46,7 +50,6 @@ public class PedidoService {
 
         Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
-        // Associa os itens ao pedido
         itens.forEach(item -> {
             item.setPedido(pedidoSalvo);
             itemPedidoRepository.save(item);
@@ -55,20 +58,17 @@ public class PedidoService {
         return pedidoSalvo;
     }
 
-    // Método usado pelo seu controller (não mudei)
     public List<HistoricoPedidoDTO> listarHistoricoPorUsuario(Long usuarioId) {
         return pedidoRepository.findByClienteId(usuarioId).stream()
             .map(this::convertToHistoricoDTO)
             .collect(Collectors.toList());
     }
 
-    // Método usado pelo seu controller (não mudei)
     public HistoricoPedidoDTO buscarUltimoPedidoDTO(Long usuarioId) {
         Optional<Pedido> ultimoPedido = pedidoRepository.findFirstByClienteIdOrderByDataDesc(usuarioId);
         return ultimoPedido.map(this::convertToHistoricoDTO).orElse(null);
     }
 
-    // Método usado pelo seu controller (AJUSTEI AQUI)
     public List<ItemPedidoDTO> listarItensPorPedido(Long pedidoId) {
         List<ItemPedido> itens = itemPedidoRepository.findByPedidoIdWithProduto(pedidoId);
         
@@ -92,7 +92,6 @@ public class PedidoService {
             .collect(Collectors.toList());
     }
 
-    // Método interno (não mudei)
     private HistoricoPedidoDTO convertToHistoricoDTO(Pedido pedido) {
         return new HistoricoPedidoDTO(
             pedido.getId(),
@@ -100,6 +99,46 @@ public class PedidoService {
             pedido.getData().toLocalDate(),
             pedido.getStatus(),
             listarItensPorPedido(pedido.getId())
+        );
+    }
+
+    // ========== NOVOS MÉTODOS (RESTAURANTE) ==========
+    
+    public Page<PedidoRestauranteDTO> listarPedidosRestaurante(Long restauranteId, Pageable pageable) {
+        Page<Pedido> pedidos = pedidoRepository.findByRestauranteId(restauranteId, pageable);
+        return pedidos.map(this::converterParaRestauranteDTO);
+    }
+
+    public PedidoRestauranteDTO buscarPedidoRestaurante(Long restauranteId, Long pedidoId) {
+        Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+        return converterParaRestauranteDTO(pedido);
+    }
+
+    public PedidoRestauranteDTO atualizarStatusPedido(Long restauranteId, Long pedidoId, String novoStatus) {
+        Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+        
+        pedido.setStatus(novoStatus);
+        Pedido pedidoAtualizado = pedidoRepository.save(pedido);
+        return converterParaRestauranteDTO(pedidoAtualizado);
+    }
+
+    private PedidoRestauranteDTO converterParaRestauranteDTO(Pedido pedido) {
+        List<ItemPedidoDTO> itensDTO = listarItensPorPedido(pedido.getId());
+        
+        Double total = itensDTO.stream()
+                .mapToDouble(item -> item.getPrecoUnitario().doubleValue() * item.getQuantidade())
+                .sum();
+
+        return new PedidoRestauranteDTO(
+                pedido.getId(),
+                pedido.getData(),
+                pedido.getStatus(),
+                pedido.getCliente().getNome(),
+                pedido.getCliente().getTelefone(),
+                itensDTO,
+                total
         );
     }
 }

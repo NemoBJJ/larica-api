@@ -1,35 +1,19 @@
 package com.larica.mapper;
 
-import com.larica.dto.ProdutoDTO;
-import com.larica.dto.RestauranteDTO;
-import com.larica.entity.Produto;
+import com.larica.dto.*;
 import com.larica.entity.Restaurante;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.factory.Mappers;
 
-import java.util.List;
-import java.util.stream.Collectors;
+@Mapper(componentModel = "spring", uses = UsuarioMapper.class)
+public interface RestauranteMapper {
+    RestauranteMapper INSTANCE = Mappers.getMapper(RestauranteMapper.class);
 
-public class RestauranteMapper {
-
-    public static RestauranteDTO toDTO(Restaurante restaurante) {
-        List<ProdutoDTO> cardapio = restaurante.getCardapio().stream()
-            .map(RestauranteMapper::toProdutoDTO)
-            .collect(Collectors.toList());
-
-        return new RestauranteDTO(
-            restaurante.getId(),
-            restaurante.getNome(),
-            restaurante.getEndereco(),
-            restaurante.getTelefone(),
-            cardapio
-        );
-    }
-
-    private static ProdutoDTO toProdutoDTO(Produto produto) {
-        return new ProdutoDTO(
-            produto.getId(),
-            produto.getNome(),
-            produto.getDescricao(),
-            produto.getPreco()
-        );
-    }
+    RestauranteDTO toDTO(Restaurante restaurante);
+    
+    @Mapping(target = "dono", source = "donoRestaurante.usuario")
+    RestauranteComDonoDTO toComDonoDTO(Restaurante restaurante);
+    
+    Restaurante toEntity(RestauranteDTO dto);
 }
