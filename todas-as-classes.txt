@@ -1,0 +1,2101 @@
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\LaricaApiApplication.java" 
+package com.larica;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class LaricaApiApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(LaricaApiApplication.class, args);
+	}
+
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\config\WebConfig.java" 
+package com.larica.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("http://localhost:3000") // Permite apenas seu frontend
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\AuthController.java" 
+package com.larica.controller;
+
+import com.larica.entity.Usuario;
+import com.larica.dto.RegisterRequestDTO;
+import com.larica.repository.UsuarioRepository;
+import com.larica.service.AuthService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.Map;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/auth/usuarios")
+public class AuthController {
+    
+    private final AuthService authService;
+    private final UsuarioRepository usuarioRepository;
+
+    public AuthController(AuthService authService, UsuarioRepository usuarioRepository) {
+        this.authService = authService;
+        this.usuarioRepository = usuarioRepository;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUsuario(@RequestBody Map<String, String> credentials) {
+        String email = credentials.get("email");
+        String senha = credentials.get("senha");
+
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
+        
+        if (usuarioOpt.isPresent() && usuarioOpt.get().getSenha().equals(senha)) {
+            Usuario usuario = usuarioOpt.get();
+            return ResponseEntity.ok().body(Map.of(
+                "id", usuario.getId(),
+                "nome", usuario.getNome(),
+                "email", usuario.getEmail()
+            ));
+        }
+        
+        return ResponseEntity.status(401).body("Credenciais inválidas");
+    }
+
+    // Mantenha os métodos existentes de registro
+    @PostMapping("/registro")
+    public Usuario registrar(@RequestBody Usuario usuario) {
+        return authService.registrarUsuario(usuario);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestBody RegisterRequestDTO request) {
+        if (usuarioRepository.existsByEmail(request.getEmail())) {
+            return ResponseEntity.badRequest().body("E-mail já cadastrado");
+        }
+
+        Usuario novoUsuario = new Usuario();
+        novoUsuario.setNome(request.getNome());
+        novoUsuario.setEmail(request.getEmail());
+        novoUsuario.setSenha(request.getSenha());
+
+        usuarioRepository.save(novoUsuario);
+        return ResponseEntity.ok("Usuário cadastrado com sucesso");
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\DonoAuthController.java" 
+package com.larica.controller;
+
+import com.larica.entity.DonoRestaurante;
+import com.larica.repository.DonoRestauranteRepository;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.Map;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/auth/donos")
+public class DonoAuthController {
+    
+    private final DonoRestauranteRepository donoRepository;
+
+    public DonoAuthController(DonoRestauranteRepository donoRepository) {
+        this.donoRepository = donoRepository;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> loginDono(@RequestBody Map<String, String> credentials) {
+        String email = credentials.get("email");
+        String senha = credentials.get("senha");
+
+        Optional<DonoRestaurante> donoOpt = donoRepository.findByEmail(email);
+        
+        if (donoOpt.isEmpty() || !donoOpt.get().getSenha().equals(senha)) {
+            return ResponseEntity.status(401).body("Credenciais inválidas");
+        }
+        
+        DonoRestaurante dono = donoOpt.get();
+        return ResponseEntity.ok(Map.of(
+            "id", dono.getId(),
+            "nome", dono.getNome(),
+            "email", dono.getEmail(),
+            "telefone", dono.getTelefone()
+        ));
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\DonoController.java" 
+package com.larica.controller;
+
+import com.larica.dto.RestauranteComDonoDTO;
+import com.larica.dto.RestauranteCompletoDTO;
+import com.larica.service.RestauranteService;
+import com.larica.mapper.RestauranteMapper;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/donos")
+public class DonoController {
+
+    private final RestauranteService restauranteService;
+    private final RestauranteMapper restauranteMapper;
+
+    public DonoController(RestauranteService restauranteService, 
+                         RestauranteMapper restauranteMapper) {
+        this.restauranteService = restauranteService;
+        this.restauranteMapper = restauranteMapper;
+    }
+
+    @PostMapping("/cadastrar-restaurante")
+    public ResponseEntity<RestauranteComDonoDTO> cadastrarRestaurante(
+            @RequestBody RestauranteCompletoDTO dto) {
+        return ResponseEntity.ok(
+            restauranteMapper.toComDonoDTO(restauranteService.cadastrarRestauranteComDono(dto))
+        );
+    }
+
+    @GetMapping("/{donoId}/restaurante")
+    public ResponseEntity<RestauranteComDonoDTO> buscarRestaurantePorDono(
+            @PathVariable Long donoId) {
+        return ResponseEntity.ok(
+            restauranteMapper.toComDonoDTO(restauranteService.buscarPorDonoId(donoId))
+        );
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\ItemPedidoController.java" 
+package com.larica.controller;
+
+import com.larica.entity.ItemPedido;
+import com.larica.service.ItemPedidoService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+@RestController
+@RequestMapping("/itens-pedido")
+public class ItemPedidoController {
+    private final ItemPedidoService itemPedidoService;
+
+    public ItemPedidoController(ItemPedidoService itemPedidoService) {
+        this.itemPedidoService = itemPedidoService;
+    }
+
+    @GetMapping("/pedido/{pedidoId}")
+    public ResponseEntity<List<ItemPedido>> listarPorPedido(@PathVariable Long pedidoId) {
+        return ResponseEntity.ok(itemPedidoService.listarPorPedido(pedidoId));
+    }
+
+    @PostMapping
+    public ResponseEntity<ItemPedido> criar(@RequestBody ItemPedido itemPedido) {
+        return ResponseEntity.ok(itemPedidoService.salvar(itemPedido));
+    }
+
+    @PostMapping("/lista")
+    public ResponseEntity<List<ItemPedido>> criarVarios(@RequestBody List<ItemPedido> itens) {
+        return ResponseEntity.ok(itemPedidoService.salvarTodos(itens));
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\PedidoController.java" 
+package com.larica.controller;
+
+import com.larica.dto.HistoricoPedidoDTO;
+import com.larica.dto.ItemPedidoDTO;
+import com.larica.dto.ItemPedidoEntradaDTO;
+import com.larica.dto.PedidoRequestDTO;
+import com.larica.entity.ItemPedido;
+import com.larica.entity.Pedido;
+import com.larica.entity.Produto;
+import com.larica.repository.ProdutoRepository;
+import com.larica.service.PedidoService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/pedidos")
+public class PedidoController {
+
+    private final PedidoService pedidoService;
+    private final ProdutoRepository produtoRepository;
+
+    public PedidoController(PedidoService pedidoService, ProdutoRepository produtoRepository) {
+        this.pedidoService = pedidoService;
+        this.produtoRepository = produtoRepository;
+    }
+
+    @PostMapping
+    public ResponseEntity<Pedido> criarPedido(@RequestBody PedidoRequestDTO dto) {
+        List<ItemPedido> itensConvertidos = dto.getItens().stream().map(i -> {
+            Produto produto = produtoRepository.findById(i.getProdutoId())
+                    .orElseThrow(() -> new RuntimeException("Produto não encontrado com ID: " + i.getProdutoId()));
+            ItemPedido item = new ItemPedido();
+            item.setProduto(produto);
+            item.setQuantidade(i.getQuantidade());
+            return item;
+        }).collect(Collectors.toList());
+
+        Pedido novoPedido = pedidoService.criarPedido(
+                dto.getUsuarioId(),
+                dto.getRestauranteId(),
+                itensConvertidos
+        );
+
+        return ResponseEntity.ok(novoPedido);
+    }
+
+    @GetMapping("/cliente/{usuarioId}")
+    public ResponseEntity<List<HistoricoPedidoDTO>> buscarHistoricoPorUsuario(@PathVariable Long usuarioId) {
+        List<HistoricoPedidoDTO> historico = pedidoService.listarHistoricoPorUsuario(usuarioId);
+        return ResponseEntity.ok(historico);
+    }
+
+    @GetMapping("/ultimo/{usuarioId}")
+    public ResponseEntity<HistoricoPedidoDTO> buscarUltimoPedido(@PathVariable Long usuarioId) {
+        HistoricoPedidoDTO ultimoPedido = pedidoService.buscarUltimoPedidoDTO(usuarioId);
+        return ultimoPedido != null ? ResponseEntity.ok(ultimoPedido) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/{id}/itens")
+    public ResponseEntity<List<ItemPedidoDTO>> listarItensPorPedido(@PathVariable Long id) {
+        List<ItemPedidoDTO> itens = pedidoService.listarItensPorPedido(id);
+        return itens.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(itens);
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\ProdutoController.java" 
+package com.larica.controller;
+
+import com.larica.dto.ProdutoDTO;
+import com.larica.entity.Produto;
+import com.larica.mapper.ProdutoMapper;
+import com.larica.service.ProdutoService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/produtos")
+public class ProdutoController {
+
+    private final ProdutoService produtoService;
+
+    public ProdutoController(ProdutoService produtoService) {
+        this.produtoService = produtoService;
+    }
+
+    @GetMapping("/por-restaurante/{restauranteId}")
+    public ResponseEntity<List<ProdutoDTO>> listarPorRestaurante(@PathVariable Long restauranteId) {
+        List<Produto> produtos = produtoService.listarPorRestaurante(restauranteId);
+        List<ProdutoDTO> dtos = produtos.stream()
+                                        .map(ProdutoMapper::toDTO)
+                                        .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\RestauranteController.java" 
+package com.larica.controller;
+
+import com.larica.dto.*;
+import com.larica.entity.Restaurante;
+import com.larica.entity.Usuario;
+import com.larica.mapper.*;
+import com.larica.service.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/restaurantes")
+public class RestauranteController {
+    private final RestauranteService restauranteService;
+    private final UsuarioService usuarioService;
+    private final RestauranteMapper restauranteMapper;
+    private final UsuarioMapper usuarioMapper;
+
+    public RestauranteController(RestauranteService restauranteService,
+                              UsuarioService usuarioService,
+                              RestauranteMapper restauranteMapper,
+                              UsuarioMapper usuarioMapper) {
+        this.restauranteService = restauranteService;
+        this.usuarioService = usuarioService;
+        this.restauranteMapper = restauranteMapper;
+        this.usuarioMapper = usuarioMapper;
+    }
+
+    // ========== ENDPOINTS DE RESTAURANTE ==========
+    @PostMapping
+    public ResponseEntity<RestauranteDTO> criarRestaurante(@RequestBody Restaurante restaurante) {
+        Restaurante salvo = restauranteService.salvar(restaurante);
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(salvo.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(restauranteMapper.toDTO(salvo));
+    }
+
+    @PostMapping("/com-dono")
+    public ResponseEntity<RestauranteComDonoDTO> criarRestauranteComDono(@RequestBody RestauranteCompletoDTO dto) {
+        Restaurante restaurante = restauranteService.cadastrarRestauranteComDono(dto);
+        return ResponseEntity.ok(restauranteMapper.toComDonoDTO(restaurante));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<RestauranteDTO>> listarRestaurantes() {
+        List<Restaurante> restaurantes = restauranteService.listarTodos();
+        return ResponseEntity.ok(restaurantes.stream()
+                .map(restauranteMapper::toDTO)
+                .collect(Collectors.toList()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<RestauranteDTO> buscarRestaurante(@PathVariable Long id) {
+        return ResponseEntity.ok(restauranteMapper.toDTO(
+            restauranteService.buscarPorId(id).orElseThrow()
+        ));
+    }
+
+    @GetMapping("/por-dono/{donoId}")
+    public ResponseEntity<RestauranteDTO> buscarPorDono(@PathVariable Long donoId) {
+        return ResponseEntity.ok(restauranteMapper.toDTO(
+            restauranteService.buscarPorDonoId(donoId)
+        ));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarRestaurante(@PathVariable Long id) {
+        restauranteService.deletar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ========== ENDPOINTS DE USUÁRIO/DONO ==========
+    @PostMapping("/donos")
+    public ResponseEntity<UsuarioDTO> criarDono(@RequestBody UsuarioDTO dto) {
+        Usuario salvo = usuarioService.salvar(usuarioMapper.toEntity(dto));
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(salvo.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(usuarioMapper.toDTO(salvo));
+    }
+
+    @GetMapping("/donos/{id}")
+    public ResponseEntity<UsuarioDTO> buscarDono(@PathVariable Long id) {
+        return ResponseEntity.ok(usuarioMapper.toDTO(
+            usuarioService.buscarPorId(id).orElseThrow()
+        ));
+    }
+
+    @GetMapping("/donos")
+    public ResponseEntity<List<UsuarioDTO>> listarDonos() {
+        List<Usuario> donos = usuarioService.listarPorTipo("DONO");
+        return ResponseEntity.ok(donos.stream()
+                .map(usuarioMapper::toDTO)
+                .collect(Collectors.toList()));
+    }
+
+    @PutMapping("/donos/{id}")
+    public ResponseEntity<UsuarioDTO> atualizarDono(@PathVariable Long id, @RequestBody UsuarioDTO dto) {
+        Usuario usuario = usuarioMapper.toEntity(dto);
+        usuario.setId(id);
+        return ResponseEntity.ok(usuarioMapper.toDTO(usuarioService.salvar(usuario)));
+    }
+
+    @DeleteMapping("/donos/{id}")
+    public ResponseEntity<Void> deletarDono(@PathVariable Long id) {
+        usuarioService.deletar(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\RestaurantePedidoController.java" 
+package com.larica.controller;
+
+import com.larica.dto.PedidoRestauranteDTO;
+import com.larica.service.PedidoService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/restaurantes/{restauranteId}/pedidos")
+public class RestaurantePedidoController {
+
+    private final PedidoService pedidoService;
+
+    public RestaurantePedidoController(PedidoService pedidoService) {
+        this.pedidoService = pedidoService;
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<PedidoRestauranteDTO>> listarPedidos(
+            @PathVariable Long restauranteId,
+            Pageable pageable) {
+        return ResponseEntity.ok(pedidoService.listarPedidosRestaurante(restauranteId, pageable));
+    }
+
+    @GetMapping("/{pedidoId}")
+    public ResponseEntity<PedidoRestauranteDTO> buscarPedido(
+            @PathVariable Long restauranteId,
+            @PathVariable Long pedidoId) {
+        return ResponseEntity.ok(pedidoService.buscarPedidoRestaurante(restauranteId, pedidoId));
+    }
+
+    @PatchMapping("/{pedidoId}/status")
+    public ResponseEntity<PedidoRestauranteDTO> atualizarStatus(
+            @PathVariable Long restauranteId,
+            @PathVariable Long pedidoId,
+            @RequestParam String status) {
+        return ResponseEntity.ok(pedidoService.atualizarStatusPedido(restauranteId, pedidoId, status));
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\controller\UsuarioController.java" 
+package com.larica.controller;
+
+import com.larica.entity.Usuario;
+import com.larica.repository.UsuarioRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
+import java.util.List;
+
+@RestController
+@RequestMapping("/usuarios")
+public class UsuarioController {
+    private final UsuarioRepository usuarioRepository;
+
+    public UsuarioController(UsuarioRepository usuarioRepository) {
+        this.usuarioRepository = usuarioRepository;
+    }
+
+    @PostMapping
+    public ResponseEntity<Usuario> cadastrarUsuario(@RequestBody Usuario usuario) {
+        if (usuarioRepository.existsByEmail(usuario.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        usuario.setDataCadastro(LocalDate.now());
+        Usuario usuarioSalvo = usuarioRepository.save(usuario);
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioSalvo);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Usuario>> listarUsuarios() {
+        return ResponseEntity.ok(usuarioRepository.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Usuario> buscarPorId(@PathVariable Long id) {
+        return usuarioRepository.findById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/existe-email")
+    public ResponseEntity<Boolean> verificarEmail(@RequestParam String email) {
+        return ResponseEntity.ok(usuarioRepository.existsByEmail(email));
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\DonoRestauranteDTO.java" 
+package com.larica.dto;
+
+import com.larica.dto.UsuarioDTO;
+
+public class DonoRestauranteDTO {
+    private Long id;
+    private UsuarioDTO usuario;
+
+    // Construtores
+    public DonoRestauranteDTO() {
+    }
+
+    public DonoRestauranteDTO(Long id, UsuarioDTO usuario) {
+        this.id = id;
+        this.usuario = usuario;
+    }
+
+    // Getters e Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public UsuarioDTO getUsuario() {
+        return usuario;
+    }
+
+    public void setUsuario(UsuarioDTO usuario) {
+        this.usuario = usuario;
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\HistoricoPedidoDTO.java" 
+package com.larica.dto;
+
+import java.time.LocalDate;
+import java.util.List;
+
+public class HistoricoPedidoDTO {
+    private Long pedidoId;
+    private String nomeRestaurante;
+    private LocalDate data;
+    private String status;
+    private List<ItemPedidoDTO> itens;
+
+    public HistoricoPedidoDTO(Long pedidoId, String nomeRestaurante, LocalDate data, String status, List<ItemPedidoDTO> itens) {
+        this.pedidoId = pedidoId;
+        this.nomeRestaurante = nomeRestaurante;
+        this.data = data;
+        this.status = status;
+        this.itens = itens;
+    }
+
+    // Getters
+    public Long getPedidoId() { return pedidoId; }
+    public String getNomeRestaurante() { return nomeRestaurante; }
+    public LocalDate getData() { return data; }
+    public String getStatus() { return status; }
+    public List<ItemPedidoDTO> getItens() { return itens; }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\ItemPedidoDTO.java" 
+package com.larica.dto;
+
+import java.math.BigDecimal;
+
+public class ItemPedidoDTO {
+    private Long id;
+    private String nomeProduto;
+    private int quantidade;
+    private BigDecimal precoUnitario;
+
+    // Construtor
+    public ItemPedidoDTO(Long id, String nomeProduto, int quantidade, BigDecimal precoUnitario) {
+        this.id = id;
+        this.nomeProduto = nomeProduto;
+        this.quantidade = quantidade;
+        this.precoUnitario = precoUnitario;
+    }
+
+    // Getters (obrigatórios para serialização JSON)
+    public Long getId() {
+        return id;
+    }
+
+    public String getNomeProduto() {
+        return nomeProduto;
+    }
+
+    public int getQuantidade() {
+        return quantidade;
+    }
+
+    public BigDecimal getPrecoUnitario() {
+        return precoUnitario;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\ItemPedidoEntradaDTO.java" 
+package com.larica.dto;
+
+public class ItemPedidoEntradaDTO {
+    private Long produtoId;
+    private int quantidade;
+
+    public Long getProdutoId() {
+        return produtoId;
+    }
+
+    public void setProdutoId(Long produtoId) {
+        this.produtoId = produtoId;
+    }
+
+    public int getQuantidade() {
+        return quantidade;
+    }
+
+    public void setQuantidade(int quantidade) {
+        this.quantidade = quantidade;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\PedidoRequestDTO.java" 
+package com.larica.dto;
+
+import java.util.List;
+
+public class PedidoRequestDTO {
+    private Long usuarioId;
+    private Long restauranteId;
+    private List<ItemPedidoEntradaDTO> itens;
+
+    public Long getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(Long usuarioId) {
+        this.usuarioId = usuarioId;
+    }
+
+    public Long getRestauranteId() {
+        return restauranteId;
+    }
+
+    public void setRestauranteId(Long restauranteId) {
+        this.restauranteId = restauranteId;
+    }
+
+    public List<ItemPedidoEntradaDTO> getItens() {
+        return itens;
+    }
+
+    public void setItens(List<ItemPedidoEntradaDTO> itens) {
+        this.itens = itens;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\PedidoRestauranteDTO.java" 
+package com.larica.dto;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public class PedidoRestauranteDTO {
+    private Long id;
+    private LocalDateTime data;
+    private String status;
+    private String nomeCliente;
+    private String telefoneCliente;
+    private List<ItemPedidoDTO> itens;
+    private Double total;
+
+    // Construtor
+    public PedidoRestauranteDTO(Long id, LocalDateTime data, String status, 
+                              String nomeCliente, String telefoneCliente, 
+                              List<ItemPedidoDTO> itens, Double total) {
+        this.id = id;
+        this.data = data;
+        this.status = status;
+        this.nomeCliente = nomeCliente;
+        this.telefoneCliente = telefoneCliente;
+        this.itens = itens;
+        this.total = total;
+    }
+
+    // Getters
+    public Long getId() { return id; }
+    public LocalDateTime getData() { return data; }
+    public String getStatus() { return status; }
+    public String getNomeCliente() { return nomeCliente; }
+    public String getTelefoneCliente() { return telefoneCliente; }
+    public List<ItemPedidoDTO> getItens() { return itens; }
+    public Double getTotal() { return total; }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\ProdutoDTO.java" 
+package com.larica.dto;
+
+import java.math.BigDecimal;
+
+public class ProdutoDTO {
+    private Long id;
+    private String nome;
+    private String descricao;
+    private BigDecimal preco;
+
+    public ProdutoDTO() {
+    }
+
+    public ProdutoDTO(Long id, String nome, String descricao, BigDecimal preco) {
+        this.id = id;
+        this.nome = nome;
+        this.descricao = descricao;
+        this.preco = preco;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public BigDecimal getPreco() {
+        return preco;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
+    }
+
+    public void setPreco(BigDecimal preco) {
+        this.preco = preco;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\RegisterRequestDTO.java" 
+package com.larica.dto;
+
+public class RegisterRequestDTO {
+    private String nome;
+    private String email;
+    private String senha;
+
+    public RegisterRequestDTO() {}
+
+    public RegisterRequestDTO(String nome, String email, String senha) {
+        this.nome = nome;
+        this.email = email;
+        this.senha = senha;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getSenha() {
+        return senha;
+    }
+
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\RestauranteComDonoDTO.java" 
+package com.larica.dto;
+
+public class RestauranteComDonoDTO {
+    private Long id;
+    private String nome;
+    private String endereco;
+    private String telefone;
+    private UsuarioDTO dono;
+
+    // Getters e Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getEndereco() {
+        return endereco;
+    }
+
+    public void setEndereco(String endereco) {
+        this.endereco = endereco;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    public UsuarioDTO getDono() {
+        return dono;
+    }
+
+    public void setDono(UsuarioDTO dono) {
+        this.dono = dono;
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\RestauranteCompletoDTO.java" 
+package com.larica.dto;
+
+public class RestauranteCompletoDTO {
+    private String nome;
+    private String endereco;
+    private String telefone;
+    private UsuarioDTO dono;
+
+    // Getters e Setters
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getEndereco() {
+        return endereco;
+    }
+
+    public void setEndereco(String endereco) {
+        this.endereco = endereco;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    public UsuarioDTO getDono() {
+        return dono;
+    }
+
+    public void setDono(UsuarioDTO dono) {
+        this.dono = dono;
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\RestauranteDTO.java" 
+package com.larica.dto;
+
+import java.util.List;
+
+public class RestauranteDTO {
+    private Long id;
+    private String nome;
+    private String endereco;
+    private String telefone;
+    private List<ProdutoDTO> cardapio;
+
+    public RestauranteDTO() {
+    }
+
+    public RestauranteDTO(Long id, String nome, String endereco, String telefone, List<ProdutoDTO> cardapio) {
+        this.id = id;
+        this.nome = nome;
+        this.endereco = endereco;
+        this.telefone = telefone;
+        this.cardapio = cardapio;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getEndereco() {
+        return endereco;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public List<ProdutoDTO> getCardapio() {
+        return cardapio;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public void setEndereco(String endereco) {
+        this.endereco = endereco;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    public void setCardapio(List<ProdutoDTO> cardapio) {
+        this.cardapio = cardapio;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\dto\UsuarioDTO.java" 
+package com.larica.dto;
+
+public class UsuarioDTO {
+    private Long id;
+    private String nome;
+    private String email;
+    private String senha;
+    private String telefone;
+    private String tipo;
+
+    // Getters e Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getSenha() {
+        return senha;
+    }
+
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\entity\DonoRestaurante.java" 
+package com.larica.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "donos_restaurante")
+public class DonoRestaurante {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String nome;
+    
+    @Column(nullable = false, unique = true)
+    private String email;
+    
+    @Column(nullable = false)
+    private String senha;
+    
+    private String telefone;
+    
+    @Column(name = "data_cadastro", nullable = false)
+    private LocalDate dataCadastro;
+
+    // Construtores
+    public DonoRestaurante() {}
+    
+    public DonoRestaurante(String nome, String email, String senha, String telefone) {
+        this.nome = nome;
+        this.email = email;
+        this.senha = senha;
+        this.telefone = telefone;
+        this.dataCadastro = LocalDate.now();
+    }
+
+    // Getters e Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getSenha() { return senha; }
+    public void setSenha(String senha) { this.senha = senha; }
+    public String getTelefone() { return telefone; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
+    public LocalDate getDataCadastro() { return dataCadastro; }
+    public void setDataCadastro(LocalDate dataCadastro) { this.dataCadastro = dataCadastro; }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\entity\ItemPedido.java" 
+package com.larica.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "itens_pedido")
+public class ItemPedido {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne
+    @JoinColumn(name = "produto_id")
+    private Produto produto;
+    
+    private int quantidade;
+    
+    @ManyToOne
+    @JoinColumn(name = "pedido_id")
+    private Pedido pedido;
+
+    // Construtores
+    public ItemPedido() {
+    }
+
+    public ItemPedido(Produto produto, int quantidade, Pedido pedido) {
+        this.produto = produto;
+        this.quantidade = quantidade;
+        this.pedido = pedido;
+    }
+
+    // Getters
+    public Long getId() {
+        return id;
+    }
+
+    public Produto getProduto() {
+        return produto;
+    }
+
+    public int getQuantidade() {
+        return quantidade;
+    }
+
+    public Pedido getPedido() {
+        return pedido;
+    }
+
+    // Setters
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setProduto(Produto produto) {
+        this.produto = produto;
+    }
+
+    public void setQuantidade(int quantidade) {
+        this.quantidade = quantidade;
+    }
+
+    public void setPedido(Pedido pedido) {
+        this.pedido = pedido;
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\entity\Pedido.java" 
+package com.larica.entity;
+
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Entity
+@Table(name = "pedidos")
+public class Pedido {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "usuario_id")
+    private Usuario cliente;
+
+    @ManyToOne
+    @JoinColumn(name = "restaurante_id")
+    private Restaurante restaurante;
+
+    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL)
+    private List<ItemPedido> itens;
+
+    private LocalDateTime data;
+    private String status;
+
+    // Construtores
+    public Pedido() {
+    }
+
+    public Pedido(Usuario cliente, Restaurante restaurante, List<ItemPedido> itens, LocalDateTime data, String status) {
+        this.cliente = cliente;
+        this.restaurante = restaurante;
+        this.itens = itens;
+        this.data = data;
+        this.status = status;
+    }
+
+    // Getters
+    public Long getId() {
+        return id;
+    }
+
+    public Usuario getCliente() {
+        return cliente;
+    }
+
+    public Restaurante getRestaurante() {
+        return restaurante;
+    }
+
+    public List<ItemPedido> getItens() {
+        return itens;
+    }
+
+    public LocalDateTime getData() {
+        return data;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public BigDecimal getTotal() {
+        if (itens == null) return BigDecimal.ZERO;
+
+        return itens.stream()
+                .map(item -> item.getProduto().getPreco().multiply(BigDecimal.valueOf(item.getQuantidade())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    // Setters
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setCliente(Usuario cliente) {
+        this.cliente = cliente;
+    }
+
+    public void setRestaurante(Restaurante restaurante) {
+        this.restaurante = restaurante;
+    }
+
+    public void setItens(List<ItemPedido> itens) {
+        this.itens = itens;
+    }
+
+    public void setData(LocalDateTime data) {
+        this.data = data;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\entity\Produto.java" 
+package com.larica.entity;
+
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.util.Objects;
+
+@Entity
+@Table(name = "produtos")
+public class Produto {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String nome;
+    
+    @Column(columnDefinition = "TEXT")
+    private String descricao;
+    
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal preco;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "restaurante_id", nullable = false)
+    private Restaurante restaurante;
+
+    // Construtores
+    public Produto() {
+    }
+
+    public Produto(String nome, String descricao, BigDecimal preco, Restaurante restaurante) {
+        this.nome = nome;
+        this.descricao = descricao;
+        this.preco = preco;
+        this.restaurante = restaurante;
+    }
+
+    // Getters e Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
+    }
+
+    public BigDecimal getPreco() {
+        return preco;
+    }
+
+    public void setPreco(BigDecimal preco) {
+        this.preco = preco;
+    }
+
+    public Restaurante getRestaurante() {
+        return restaurante;
+    }
+
+    public void setRestaurante(Restaurante restaurante) {
+        this.restaurante = restaurante;
+    }
+
+    // equals e hashCode
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Produto produto = (Produto) o;
+        return Objects.equals(id, produto.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    // toString
+    @Override
+    public String toString() {
+        return "Produto{" +
+                "id=" + id +
+                ", nome='" + nome + '\'' +
+                ", preco=" + preco +
+                '}';
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\entity\Restaurante.java" 
+package com.larica.entity;
+
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+@Entity
+@Table(name = "restaurantes")
+public class Restaurante {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String nome;
+    
+    @Column(nullable = false)
+    private String endereco;
+    
+    private String telefone;
+    
+    @OneToOne
+    @JoinColumn(name = "dono_restaurante_id", nullable = false)
+    private DonoRestaurante donoRestaurante;
+    
+    @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Produto> cardapio = new ArrayList<>();
+
+    // Construtores
+    public Restaurante() {}
+    
+    public Restaurante(String nome, String endereco, String telefone, DonoRestaurante donoRestaurante) {
+        this.nome = nome;
+        this.endereco = endereco;
+        this.telefone = telefone;
+        this.donoRestaurante = donoRestaurante;
+    }
+
+    // Getters e Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+    public String getEndereco() { return endereco; }
+    public void setEndereco(String endereco) { this.endereco = endereco; }
+    public String getTelefone() { return telefone; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
+    public DonoRestaurante getDonoRestaurante() { return donoRestaurante; }
+    public void setDonoRestaurante(DonoRestaurante donoRestaurante) { this.donoRestaurante = donoRestaurante; }
+    public List<Produto> getCardapio() { return cardapio; }
+    public void setCardapio(List<Produto> cardapio) { this.cardapio = cardapio; }
+
+    // Métodos auxiliares
+    public void adicionarProduto(Produto produto) {
+        cardapio.add(produto);
+        produto.setRestaurante(this);
+    }
+
+    public void removerProduto(Produto produto) {
+        cardapio.remove(produto);
+        produto.setRestaurante(null);
+    }
+
+    // equals, hashCode e toString
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Restaurante that = (Restaurante) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return "Restaurante{" +
+                "id=" + id +
+                ", nome='" + nome + '\'' +
+                ", dono=" + (donoRestaurante != null ? donoRestaurante.getNome() : "null") +
+                '}';
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\entity\Usuario.java" 
+package com.larica.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "usuarios")
+public class Usuario {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String nome;
+    
+    @Column(nullable = false, unique = true)
+    private String email;
+    
+    @Column(nullable = false)
+    private String senha;
+    
+    private String telefone;
+    
+    @Column(nullable = false)
+    private String tipo;
+    
+    @Column(nullable = false)
+    private LocalDate dataCadastro;
+    
+    @OneToOne(mappedBy = "usuario")
+    private DonoRestaurante donoRestaurante;
+
+    public Usuario() {
+    }
+
+    public Usuario(String nome, String email, String senha, String telefone, String tipo) {
+        this.nome = nome;
+        this.email = email;
+        this.senha = senha;
+        this.telefone = telefone;
+        this.tipo = tipo;
+        this.dataCadastro = LocalDate.now();
+    }
+
+    // Getters e Setters para todos os campos
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getSenha() {
+        return senha;
+    }
+
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
+
+    public LocalDate getDataCadastro() {
+        return dataCadastro;
+    }
+
+    public void setDataCadastro(LocalDate dataCadastro) {
+        this.dataCadastro = dataCadastro;
+    }
+
+    public DonoRestaurante getDonoRestaurante() {
+        return donoRestaurante;
+    }
+
+    public void setDonoRestaurante(DonoRestaurante donoRestaurante) {
+        this.donoRestaurante = donoRestaurante;
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\mapper\DonoRestauranteMapper.java" 
+package com.larica.mapper;
+
+import com.larica.dto.DonoRestauranteDTO;
+import com.larica.entity.DonoRestaurante;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
+
+@Mapper(componentModel = "spring")
+public interface DonoRestauranteMapper {
+    DonoRestauranteMapper INSTANCE = Mappers.getMapper(DonoRestauranteMapper.class);
+    
+    DonoRestauranteDTO toDTO(DonoRestaurante dono);
+    DonoRestaurante toEntity(DonoRestauranteDTO dto);
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\mapper\ProdutoMapper.java" 
+package com.larica.mapper;
+
+import com.larica.dto.ProdutoDTO;
+import com.larica.entity.Produto;
+
+public class ProdutoMapper {
+
+    public static ProdutoDTO toDTO(Produto produto) {
+        if (produto == null) return null;
+
+        return new ProdutoDTO(
+            produto.getId(),
+            produto.getNome(),
+            produto.getDescricao(),
+            produto.getPreco()
+        );
+    }
+
+    public static Produto toEntity(ProdutoDTO dto) {
+        if (dto == null) return null;
+
+        Produto produto = new Produto();
+        produto.setId(dto.getId());
+        produto.setNome(dto.getNome());
+        produto.setDescricao(dto.getDescricao());
+        produto.setPreco(dto.getPreco());
+
+        return produto;
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\mapper\RestauranteMapper.java" 
+package com.larica.mapper;
+
+import com.larica.dto.*;
+import com.larica.entity.Restaurante;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.factory.Mappers;
+
+@Mapper(componentModel = "spring", uses = UsuarioMapper.class)
+public interface RestauranteMapper {
+    RestauranteMapper INSTANCE = Mappers.getMapper(RestauranteMapper.class);
+
+    RestauranteDTO toDTO(Restaurante restaurante);
+    
+    @Mapping(target = "dono", source = "donoRestaurante.usuario")
+    RestauranteComDonoDTO toComDonoDTO(Restaurante restaurante);
+    
+    Restaurante toEntity(RestauranteDTO dto);
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\mapper\UsuarioMapper.java" 
+package com.larica.mapper;
+
+import com.larica.dto.UsuarioDTO;
+import com.larica.entity.Usuario;
+import org.mapstruct.Mapper;
+
+@Mapper(componentModel = "spring")
+public interface UsuarioMapper {
+    UsuarioDTO toDTO(Usuario usuario);
+    Usuario toEntity(UsuarioDTO dto);
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\repository\DonoRestauranteRepository.java" 
+package com.larica.repository;
+
+import com.larica.entity.DonoRestaurante;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface DonoRestauranteRepository extends JpaRepository<DonoRestaurante, Long> {
+    Optional<DonoRestaurante> findByEmail(String email);
+    boolean existsByEmail(String email);
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\repository\ItemPedidoRepository.java" 
+package com.larica.repository;
+
+import com.larica.entity.ItemPedido;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ItemPedidoRepository extends JpaRepository<ItemPedido, Long> {
+    
+    @Query("SELECT ip FROM ItemPedido ip JOIN FETCH ip.produto WHERE ip.pedido.id = :pedidoId")
+    List<ItemPedido> findByPedidoIdWithProduto(@Param("pedidoId") Long pedidoId);
+    
+    List<ItemPedido> findByPedidoId(Long pedidoId);
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\repository\PedidoRepository.java" 
+package com.larica.repository;
+
+import com.larica.entity.Pedido;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+    // Métodos existentes
+    List<Pedido> findByClienteId(Long clienteId);
+    Optional<Pedido> findFirstByClienteIdOrderByDataDesc(Long clienteId);
+    
+    // Novos métodos para restaurante
+    Page<Pedido> findByRestauranteId(Long restauranteId, Pageable pageable);
+    
+    @Query("SELECT p FROM Pedido p WHERE p.id = :pedidoId AND p.restaurante.id = :restauranteId")
+    Optional<Pedido> findByIdAndRestauranteId(Long pedidoId, Long restauranteId);
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\repository\ProdutoRepository.java" 
+package com.larica.repository;
+
+import com.larica.entity.Produto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ProdutoRepository extends JpaRepository<Produto, Long> {
+    List<Produto> findByRestauranteId(Long restauranteId);
+    Page<Produto> findByRestauranteId(Long restauranteId, Pageable pageable);
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\repository\RestauranteRepository.java" 
+package com.larica.repository;
+
+import com.larica.entity.Restaurante;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import java.util.List;
+import java.util.Optional;
+
+public interface RestauranteRepository extends JpaRepository<Restaurante, Long> {
+    @Query("SELECT r FROM Restaurante r WHERE r.donoRestaurante.id = :donoId")
+    Optional<Restaurante> findByDonoRestauranteId(Long donoId);
+    
+    @Query("SELECT r FROM Restaurante r WHERE LOWER(r.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")
+    List<Restaurante> findByNomeContainingIgnoreCase(String nome);
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\repository\UsuarioRepository.java" 
+package com.larica.repository;
+
+import com.larica.entity.Usuario;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.Optional;
+
+public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
+    boolean existsByEmail(String email);
+    Optional<Usuario> findByEmail(String email);
+    List<Usuario> findByTipo(String tipo);
+    
+    // Métodos padrão do JpaRepository já incluem:
+    // save(), deleteById(), findAll(), findById(), etc.
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\service\AuthService.java" 
+package com.larica.service;
+
+import com.larica.entity.Usuario;
+import com.larica.repository.UsuarioRepository;
+import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+
+@Service
+public class AuthService {
+    private final UsuarioRepository usuarioRepository;
+
+    public AuthService(UsuarioRepository usuarioRepository) {
+        this.usuarioRepository = usuarioRepository;
+    }
+
+    public Usuario registrarUsuario(Usuario usuario) {
+        if (usuarioRepository.existsByEmail(usuario.getEmail())) {
+            throw new RuntimeException("Email já cadastrado!");
+        }
+        usuario.setDataCadastro(LocalDate.now());
+        return usuarioRepository.save(usuario);
+    }
+
+    public boolean login(String email, String senha) {
+        return usuarioRepository.findByEmail(email)
+            .map(usuario -> usuario.getSenha().equals(senha))
+            .orElse(false);
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\service\ItemPedidoService.java" 
+package com.larica.service;
+
+import com.larica.entity.ItemPedido;
+import com.larica.repository.ItemPedidoRepository;
+import org.springframework.stereotype.Service;
+import java.util.List;
+
+@Service
+public class ItemPedidoService {
+    private final ItemPedidoRepository itemPedidoRepository;
+
+    public ItemPedidoService(ItemPedidoRepository itemPedidoRepository) {
+        this.itemPedidoRepository = itemPedidoRepository;
+    }
+
+    public ItemPedido salvar(ItemPedido itemPedido) {
+        return itemPedidoRepository.save(itemPedido);
+    }
+
+    public List<ItemPedido> salvarTodos(List<ItemPedido> itens) {
+        return itemPedidoRepository.saveAll(itens);
+    }
+
+    public List<ItemPedido> listarPorPedido(Long pedidoId) {
+        return itemPedidoRepository.findByPedidoId(pedidoId);
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\service\PedidoService.java" 
+package com.larica.service;
+
+import com.larica.dto.*;
+import com.larica.entity.*;
+import com.larica.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import com.larica.dto.PedidoRestauranteDTO.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+public class PedidoService {
+
+    private final PedidoRepository pedidoRepository;
+    private final ItemPedidoRepository itemPedidoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final RestauranteRepository restauranteRepository;
+
+    public PedidoService(
+        PedidoRepository pedidoRepository,
+        ItemPedidoRepository itemPedidoRepository,
+        UsuarioRepository usuarioRepository,
+        RestauranteRepository restauranteRepository
+    ) {
+        this.pedidoRepository = pedidoRepository;
+        this.itemPedidoRepository = itemPedidoRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.restauranteRepository = restauranteRepository;
+    }
+
+    // ========== MÉTODOS EXISTENTES (USUÁRIO) ==========
+    
+    public Pedido criarPedido(Long usuarioId, Long restauranteId, List<ItemPedido> itens) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+            .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+        Restaurante restaurante = restauranteRepository.findById(restauranteId)
+            .orElseThrow(() -> new RuntimeException("Restaurante não encontrado"));
+
+        Pedido pedido = new Pedido();
+        pedido.setCliente(usuario);
+        pedido.setRestaurante(restaurante);
+        pedido.setData(LocalDateTime.now());
+        pedido.setStatus("AGUARDANDO");
+
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+        itens.forEach(item -> {
+            item.setPedido(pedidoSalvo);
+            itemPedidoRepository.save(item);
+        });
+
+        return pedidoSalvo;
+    }
+
+    public List<HistoricoPedidoDTO> listarHistoricoPorUsuario(Long usuarioId) {
+        return pedidoRepository.findByClienteId(usuarioId).stream()
+            .map(this::convertToHistoricoDTO)
+            .collect(Collectors.toList());
+    }
+
+    public HistoricoPedidoDTO buscarUltimoPedidoDTO(Long usuarioId) {
+        Optional<Pedido> ultimoPedido = pedidoRepository.findFirstByClienteIdOrderByDataDesc(usuarioId);
+        return ultimoPedido.map(this::convertToHistoricoDTO).orElse(null);
+    }
+
+    public List<ItemPedidoDTO> listarItensPorPedido(Long pedidoId) {
+        List<ItemPedido> itens = itemPedidoRepository.findByPedidoIdWithProduto(pedidoId);
+        
+        return itens.stream()
+            .map(item -> {
+                if (item.getProduto() == null) {
+                    return new ItemPedidoDTO(
+                        item.getId(),
+                        "Produto indisponível",
+                        item.getQuantidade(),
+                        BigDecimal.ZERO
+                    );
+                }
+                return new ItemPedidoDTO(
+                    item.getId(),
+                    item.getProduto().getNome(),
+                    item.getQuantidade(),
+                    item.getProduto().getPreco()
+                );
+            })
+            .collect(Collectors.toList());
+    }
+
+    private HistoricoPedidoDTO convertToHistoricoDTO(Pedido pedido) {
+        return new HistoricoPedidoDTO(
+            pedido.getId(),
+            pedido.getRestaurante() != null ? pedido.getRestaurante().getNome() : "Restaurante não informado",
+            pedido.getData().toLocalDate(),
+            pedido.getStatus(),
+            listarItensPorPedido(pedido.getId())
+        );
+    }
+
+    // ========== NOVOS MÉTODOS (RESTAURANTE) ==========
+    
+    public Page<PedidoRestauranteDTO> listarPedidosRestaurante(Long restauranteId, Pageable pageable) {
+        Page<Pedido> pedidos = pedidoRepository.findByRestauranteId(restauranteId, pageable);
+        return pedidos.map(this::converterParaRestauranteDTO);
+    }
+
+    public PedidoRestauranteDTO buscarPedidoRestaurante(Long restauranteId, Long pedidoId) {
+        Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+        return converterParaRestauranteDTO(pedido);
+    }
+
+    public PedidoRestauranteDTO atualizarStatusPedido(Long restauranteId, Long pedidoId, String novoStatus) {
+        Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+        
+        pedido.setStatus(novoStatus);
+        Pedido pedidoAtualizado = pedidoRepository.save(pedido);
+        return converterParaRestauranteDTO(pedidoAtualizado);
+    }
+
+    private PedidoRestauranteDTO converterParaRestauranteDTO(Pedido pedido) {
+        List<ItemPedidoDTO> itensDTO = listarItensPorPedido(pedido.getId());
+        
+        Double total = itensDTO.stream()
+                .mapToDouble(item -> item.getPrecoUnitario().doubleValue() * item.getQuantidade())
+                .sum();
+
+        return new PedidoRestauranteDTO(
+                pedido.getId(),
+                pedido.getData(),
+                pedido.getStatus(),
+                pedido.getCliente().getNome(),
+                pedido.getCliente().getTelefone(),
+                itensDTO,
+                total
+        );
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\service\ProdutoService.java" 
+package com.larica.service;
+
+import com.larica.entity.Produto;
+import com.larica.repository.ProdutoRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class ProdutoService {
+    private final ProdutoRepository produtoRepository;
+
+    public ProdutoService(ProdutoRepository produtoRepository) {
+        this.produtoRepository = produtoRepository;
+    }
+
+    public Produto salvar(Produto produto) {
+        return produtoRepository.save(produto);
+    }
+
+    public Optional<Produto> buscarPorId(Long id) {
+        return produtoRepository.findById(id);
+    }
+
+    public List<Produto> listarPorRestaurante(Long restauranteId) {
+        return produtoRepository.findByRestauranteId(restauranteId);
+    }
+
+    public List<Produto> listarPorRestaurante(Long restauranteId, int pagina, int tamanho) {
+        return produtoRepository.findByRestauranteId(restauranteId, PageRequest.of(pagina, tamanho)).getContent();
+    }
+
+    public void deletar(Long id) {
+        produtoRepository.deleteById(id);
+    }
+}
+
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\service\RestauranteService.java" 
+package com.larica.service;
+
+import com.larica.dto.RestauranteCompletoDTO;
+import com.larica.entity.*;
+import com.larica.repository.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class RestauranteService {
+    private final RestauranteRepository restauranteRepository;
+    private final DonoRestauranteRepository donoRestauranteRepository;
+
+    public RestauranteService(RestauranteRepository restauranteRepository,
+                            DonoRestauranteRepository donoRestauranteRepository) {
+        this.restauranteRepository = restauranteRepository;
+        this.donoRestauranteRepository = donoRestauranteRepository;
+    }
+
+    @Transactional
+    public Restaurante cadastrarRestauranteComDono(RestauranteCompletoDTO dto) {
+        if (dto == null || dto.getDono() == null) {
+            throw new IllegalArgumentException("Dados do restaurante e dono são obrigatórios");
+        }
+
+        DonoRestaurante dono = new DonoRestaurante();
+        dono.setNome(dto.getDono().getNome());
+        dono.setEmail(dto.getDono().getEmail());
+        dono.setSenha(dto.getDono().getSenha());
+        dono.setTelefone(dto.getDono().getTelefone());
+        dono.setDataCadastro(LocalDate.now());
+        dono = donoRestauranteRepository.save(dono);
+        
+        Restaurante restaurante = new Restaurante();
+        restaurante.setNome(dto.getNome());
+        restaurante.setEndereco(dto.getEndereco());
+        restaurante.setTelefone(dto.getTelefone());
+        restaurante.setDonoRestaurante(dono);
+        
+        return restauranteRepository.save(restaurante);
+    }
+
+    public Restaurante salvar(Restaurante restaurante) {
+        return restauranteRepository.save(restaurante);
+    }
+
+    public Optional<Restaurante> buscarPorId(Long id) {
+        return restauranteRepository.findById(id);
+    }
+
+    public Restaurante buscarPorDonoId(Long donoId) {
+        return restauranteRepository.findByDonoRestauranteId(donoId)
+                .orElseThrow(() -> new RuntimeException("Restaurante não encontrado"));
+    }
+
+    public void deletar(Long id) {
+        restauranteRepository.deleteById(id);
+    }
+
+    public List<Restaurante> listarTodos() {
+        return restauranteRepository.findAll();
+    }
+}
+C:\Users\Nemuel Araujo\Desktop\larica-api>type "C:\Users\Nemuel Araujo\Desktop\larica-api\src\main\java\com\larica\service\UsuarioService.java" 
+package com.larica.service;
+
+import com.larica.entity.Usuario;
+import com.larica.repository.UsuarioRepository;
+import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class UsuarioService {
+    private final UsuarioRepository usuarioRepository;
+
+    public UsuarioService(UsuarioRepository usuarioRepository) {
+        this.usuarioRepository = usuarioRepository;
+    }
+
+    // Método salvarUsuario (já existente)
+    public Usuario salvarUsuario(Usuario usuario) {
+        if (usuario.getDataCadastro() == null) {
+            usuario.setDataCadastro(LocalDate.now());
+        }
+        return usuarioRepository.save(usuario);
+    }
+
+    // Adicione este método para compatibilidade
+    public Usuario salvar(Usuario usuario) {
+        return salvarUsuario(usuario);
+    }
+
+    // Restante dos métodos permanece igual
+    public List<Usuario> listarTodos() {
+        return usuarioRepository.findAll();
+    }
+
+    public Optional<Usuario> buscarPorId(Long id) {
+        return usuarioRepository.findById(id);
+    }
+
+    public void deletar(Long id) {
+        usuarioRepository.deleteById(id);
+    }
+
+    public boolean existePorEmail(String email) {
+        return usuarioRepository.existsByEmail(email);
+    }
+
+    public List<Usuario> listarPorTipo(String tipo) {
+        return usuarioRepository.findByTipo(tipo);
+    }
+
+    public Optional<Usuario> buscarPorEmail(String email) {
+        return usuarioRepository.findByEmail(email);
+    }
+}

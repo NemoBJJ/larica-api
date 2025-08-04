@@ -1,3 +1,4 @@
+// src/main/java/com/larica/service/RestauranteService.java
 package com.larica.service;
 
 import com.larica.dto.RestauranteCompletoDTO;
@@ -13,49 +14,37 @@ import java.util.Optional;
 public class RestauranteService {
     private final RestauranteRepository restauranteRepository;
     private final DonoRestauranteRepository donoRestauranteRepository;
-    private final UsuarioRepository usuarioRepository;
 
     public RestauranteService(RestauranteRepository restauranteRepository,
-                            DonoRestauranteRepository donoRestauranteRepository,
-                            UsuarioRepository usuarioRepository) {
+                              DonoRestauranteRepository donoRestauranteRepository) {
         this.restauranteRepository = restauranteRepository;
         this.donoRestauranteRepository = donoRestauranteRepository;
-        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional
     public Restaurante cadastrarRestauranteComDono(RestauranteCompletoDTO dto) {
-        // Validação
         if (dto == null || dto.getDono() == null) {
             throw new IllegalArgumentException("Dados do restaurante e dono são obrigatórios");
         }
 
-        // Cria usuário dono
-        Usuario usuario = new Usuario();
-        usuario.setNome(dto.getDono().getNome());
-        usuario.setEmail(dto.getDono().getEmail());
-        usuario.setSenha(dto.getDono().getSenha());
-        usuario.setTipo("DONO");
-        usuario.setDataCadastro(LocalDate.now());
-        
-        usuario = usuarioRepository.save(usuario);
-        
-        // Cria relação dono-restaurante
         DonoRestaurante dono = new DonoRestaurante();
-        dono.setUsuario(usuario);
+        dono.setNome(dto.getDono().getNome());
+        dono.setEmail(dto.getDono().getEmail());
+        dono.setSenha(dto.getDono().getSenha());
+        dono.setTelefone(dto.getDono().getTelefone());
+        dono.setDataCadastro(LocalDate.now());
         dono = donoRestauranteRepository.save(dono);
         
-        // Cria restaurante
         Restaurante restaurante = new Restaurante();
         restaurante.setNome(dto.getNome());
         restaurante.setEndereco(dto.getEndereco());
         restaurante.setTelefone(dto.getTelefone());
+        // Sem relação persistida no BD: somente em memória
         restaurante.setDonoRestaurante(dono);
         
         return restauranteRepository.save(restaurante);
     }
 
-    // Outros métodos permanecem iguais
     public Restaurante salvar(Restaurante restaurante) {
         return restauranteRepository.save(restaurante);
     }
@@ -64,9 +53,9 @@ public class RestauranteService {
         return restauranteRepository.findById(id);
     }
 
+    // DESATIVADO: não há coluna/relacionamento persistente para dono no BD.
     public Restaurante buscarPorDonoId(Long donoId) {
-        return restauranteRepository.findByDonoRestauranteUsuarioId(donoId)
-                .orElseThrow(() -> new RuntimeException("Restaurante não encontrado"));
+        throw new UnsupportedOperationException("Busca por dono desativada: restaurante não possui coluna/relacionamento de dono no BD.");
     }
 
     public void deletar(Long id) {

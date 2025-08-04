@@ -5,7 +5,7 @@ public class RestauranteComDonoDTO {
     private String nome;
     private String endereco;
     private String telefone;
-    private UsuarioDTO dono;
+    private DonoRestauranteDTO dono;
 
     // Getters e Setters
     public Long getId() {
@@ -40,11 +40,11 @@ public class RestauranteComDonoDTO {
         this.telefone = telefone;
     }
 
-    public UsuarioDTO getDono() {
+    public DonoRestauranteDTO getDono() {
         return dono;
     }
 
-    public void setDono(UsuarioDTO dono) {
+    public void setDono(DonoRestauranteDTO dono) {
         this.dono = dono;
     }
 }

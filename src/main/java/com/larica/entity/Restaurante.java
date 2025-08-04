@@ -1,3 +1,4 @@
+// src/main/java/com/larica/entity/Restaurante.java
 package com.larica.entity;
 
 import jakarta.persistence.*;
@@ -19,17 +20,16 @@ public class Restaurante {
     private String endereco;
     
     private String telefone;
-    
-    @OneToOne
-    @JoinColumn(name = "dono_restaurante_id", nullable = false)
+
+    // Não existe mais coluna no BD para o dono. Mantemos apenas em memória.
+    @Transient
     private DonoRestaurante donoRestaurante;
     
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Produto> cardapio = new ArrayList<>();
 
-    public Restaurante() {
-    }
-
+    public Restaurante() {}
+    
     public Restaurante(String nome, String endereco, String telefone, DonoRestaurante donoRestaurante) {
         this.nome = nome;
         this.endereco = endereco;
@@ -37,53 +37,18 @@ public class Restaurante {
         this.donoRestaurante = donoRestaurante;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public String getEndereco() {
-        return endereco;
-    }
-
-    public void setEndereco(String endereco) {
-        this.endereco = endereco;
-    }
-
-    public String getTelefone() {
-        return telefone;
-    }
-
-    public void setTelefone(String telefone) {
-        this.telefone = telefone;
-    }
-
-    public DonoRestaurante getDonoRestaurante() {
-        return donoRestaurante;
-    }
-
-    public void setDonoRestaurante(DonoRestaurante donoRestaurante) {
-        this.donoRestaurante = donoRestaurante;
-    }
-
-    public List<Produto> getCardapio() {
-        return cardapio;
-    }
-
-    public void setCardapio(List<Produto> cardapio) {
-        this.cardapio = cardapio;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+    public String getEndereco() { return endereco; }
+    public void setEndereco(String endereco) { this.endereco = endereco; }
+    public String getTelefone() { return telefone; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
+    public DonoRestaurante getDonoRestaurante() { return donoRestaurante; }
+    public void setDonoRestaurante(DonoRestaurante donoRestaurante) { this.donoRestaurante = donoRestaurante; }
+    public List<Produto> getCardapio() { return cardapio; }
+    public void setCardapio(List<Produto> cardapio) { this.cardapio = cardapio; }
 
     public void adicionarProduto(Produto produto) {
         cardapio.add(produto);
@@ -113,7 +78,7 @@ public class Restaurante {
         return "Restaurante{" +
                 "id=" + id +
                 ", nome='" + nome + '\'' +
-                ", dono=" + (donoRestaurante != null ? donoRestaurante.getUsuario().getNome() : "null") +
+                ", telefone='" + telefone + '\'' +
                 '}';
     }
 }
