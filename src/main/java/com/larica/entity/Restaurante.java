@@ -9,6 +9,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "restaurantes")
 public class Restaurante {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,15 +22,15 @@ public class Restaurante {
     
     private String telefone;
 
-    // Não existe mais coluna no BD para o dono. Mantemos apenas em memória.
-    @Transient
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dono_id", referencedColumnName = "id")
     private DonoRestaurante donoRestaurante;
     
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Produto> cardapio = new ArrayList<>();
 
     public Restaurante() {}
-    
+
     public Restaurante(String nome, String endereco, String telefone, DonoRestaurante donoRestaurante) {
         this.nome = nome;
         this.endereco = endereco;
@@ -39,14 +40,19 @@ public class Restaurante {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
+
     public String getEndereco() { return endereco; }
     public void setEndereco(String endereco) { this.endereco = endereco; }
+
     public String getTelefone() { return telefone; }
     public void setTelefone(String telefone) { this.telefone = telefone; }
+
     public DonoRestaurante getDonoRestaurante() { return donoRestaurante; }
     public void setDonoRestaurante(DonoRestaurante donoRestaurante) { this.donoRestaurante = donoRestaurante; }
+
     public List<Produto> getCardapio() { return cardapio; }
     public void setCardapio(List<Produto> cardapio) { this.cardapio = cardapio; }
 

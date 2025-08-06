@@ -2,8 +2,9 @@ package com.larica.controller;
 
 import com.larica.dto.HistoricoPedidoDTO;
 import com.larica.dto.ItemPedidoDTO;
-import com.larica.dto.ItemPedidoEntradaDTO;
 import com.larica.dto.PedidoRequestDTO;
+import com.larica.dto.PedidoCriadoDTO;
+import com.larica.dto.PedidoRestauranteDTO;
 import com.larica.entity.ItemPedido;
 import com.larica.entity.Pedido;
 import com.larica.entity.Produto;
@@ -11,6 +12,7 @@ import com.larica.repository.ProdutoRepository;
 import com.larica.service.PedidoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,7 +30,7 @@ public class PedidoController {
     }
 
     @PostMapping
-    public ResponseEntity<Pedido> criarPedido(@RequestBody PedidoRequestDTO dto) {
+    public ResponseEntity<PedidoCriadoDTO> criarPedido(@RequestBody PedidoRequestDTO dto) {
         List<ItemPedido> itensConvertidos = dto.getItens().stream().map(i -> {
             Produto produto = produtoRepository.findById(i.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado com ID: " + i.getProdutoId()));
@@ -44,7 +46,12 @@ public class PedidoController {
                 itensConvertidos
         );
 
-        return ResponseEntity.ok(novoPedido);
+        PedidoCriadoDTO body = new PedidoCriadoDTO(
+                novoPedido.getId(),
+                novoPedido.getStatus(),
+                novoPedido.getData()
+        );
+        return ResponseEntity.ok(body);
     }
 
     @GetMapping("/cliente/{usuarioId}")
@@ -63,5 +70,16 @@ public class PedidoController {
     public ResponseEntity<List<ItemPedidoDTO>> listarItensPorPedido(@PathVariable Long id) {
         List<ItemPedidoDTO> itens = pedidoService.listarItensPorPedido(id);
         return itens.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(itens);
+    }
+
+    @PatchMapping("/restaurante/{restauranteId}/{pedidoId}/status")
+    @CrossOrigin(origins = "http://localhost:3000", methods = RequestMethod.PATCH)
+    public ResponseEntity<PedidoRestauranteDTO> atualizarStatusPedido(
+            @PathVariable Long restauranteId,
+            @PathVariable Long pedidoId,
+            @RequestParam String status) {
+
+        PedidoRestauranteDTO atualizado = pedidoService.atualizarStatusPedido(restauranteId, pedidoId, status);
+        return ResponseEntity.ok(atualizado);
     }
 }
