@@ -37,7 +37,7 @@ public class PedidoController {
         }).collect(Collectors.toList());
 
         Pedido novoPedido = pedidoService.criarPedido(
-                dto.getUsuarioId(), // 👈 Agora usando o ID recebido do DTO
+                dto.getUsuarioId(),
                 dto.getRestauranteId(),
                 itensConvertidos
         );
@@ -53,6 +53,12 @@ public class PedidoController {
     @GetMapping("/cliente/{usuarioId}")
     public ResponseEntity<List<HistoricoPedidoDTO>> buscarHistoricoPorUsuario(@PathVariable Long usuarioId) {
         List<HistoricoPedidoDTO> historico = pedidoService.listarHistoricoPorUsuario(usuarioId);
+        return ResponseEntity.ok(historico);
+    }
+
+    @GetMapping("/restaurante/{restauranteId}")
+    public ResponseEntity<List<HistoricoPedidoDTO>> buscarHistoricoPorRestaurante(@PathVariable Long restauranteId) {
+        List<HistoricoPedidoDTO> historico = pedidoService.listarHistoricoPorRestaurante(restauranteId);
         return ResponseEntity.ok(historico);
     }
 
@@ -77,5 +83,13 @@ public class PedidoController {
 
         PedidoRestauranteDTO atualizado = pedidoService.atualizarStatusPedido(restauranteId, pedidoId, status);
         return ResponseEntity.ok(atualizado);
+    }
+
+    // 🔥 NOVO: Histórico geral (todos os pedidos, ordenado por data desc)
+    @GetMapping("/todos")
+    @CrossOrigin(origins = "http://localhost:3000")
+    public ResponseEntity<List<HistoricoPedidoDTO>> listarHistoricoGeral() {
+        List<HistoricoPedidoDTO> historico = pedidoService.listarHistoricoGeral();
+        return ResponseEntity.ok(historico);
     }
 }

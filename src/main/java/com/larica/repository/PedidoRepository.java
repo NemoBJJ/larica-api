@@ -14,10 +14,13 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     // Métodos existentes
     List<Pedido> findByClienteId(Long clienteId);
     Optional<Pedido> findFirstByClienteIdOrderByDataDesc(Long clienteId);
-    
+
     // Novos métodos para restaurante
     Page<Pedido> findByRestauranteId(Long restauranteId, Pageable pageable);
-    
+
     @Query("SELECT p FROM Pedido p WHERE p.id = :pedidoId AND p.restaurante.id = :restauranteId")
     Optional<Pedido> findByIdAndRestauranteId(Long pedidoId, Long restauranteId);
+
+    // 🔥 NOVO: todos os pedidos ordenados por data desc
+    List<Pedido> findAllByOrderByDataDesc();
 }

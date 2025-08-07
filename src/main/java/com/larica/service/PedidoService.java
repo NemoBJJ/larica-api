@@ -61,6 +61,12 @@ public class PedidoService {
             .collect(Collectors.toList());
     }
 
+    public List<HistoricoPedidoDTO> listarHistoricoPorRestaurante(Long restauranteId) {
+        return pedidoRepository.findByRestauranteId(restauranteId, Pageable.unpaged()).stream()
+            .map(this::convertToHistoricoDTO)
+            .collect(Collectors.toList());
+    }
+
     public HistoricoPedidoDTO buscarUltimoPedidoDTO(Long usuarioId) {
         Optional<Pedido> ultimoPedido = pedidoRepository.findFirstByClienteIdOrderByDataDesc(usuarioId);
         return ultimoPedido.map(this::convertToHistoricoDTO).orElse(null);
@@ -135,5 +141,13 @@ public class PedidoService {
             itensDTO,
             total
         );
+    }
+
+    // 🔥 NOVO: histórico geral (todos os pedidos)
+    public List<HistoricoPedidoDTO> listarHistoricoGeral() {
+        return pedidoRepository.findAllByOrderByDataDesc()
+                .stream()
+                .map(this::convertToHistoricoDTO)
+                .collect(Collectors.toList());
     }
 }
