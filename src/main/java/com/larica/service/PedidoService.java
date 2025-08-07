@@ -6,7 +6,6 @@ import com.larica.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import com.larica.dto.PedidoRestauranteDTO.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -34,8 +33,6 @@ public class PedidoService {
         this.restauranteRepository = restauranteRepository;
     }
 
-    // ========== MÉTODOS EXISTENTES (USUÁRIO) ==========
-    
     public Pedido criarPedido(Long usuarioId, Long restauranteId, List<ItemPedido> itens) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
             .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
@@ -71,7 +68,7 @@ public class PedidoService {
 
     public List<ItemPedidoDTO> listarItensPorPedido(Long pedidoId) {
         List<ItemPedido> itens = itemPedidoRepository.findByPedidoIdWithProduto(pedidoId);
-        
+
         return itens.stream()
             .map(item -> {
                 if (item.getProduto() == null) {
@@ -102,8 +99,6 @@ public class PedidoService {
         );
     }
 
-    // ========== NOVOS MÉTODOS (RESTAURANTE) ==========
-    
     public Page<PedidoRestauranteDTO> listarPedidosRestaurante(Long restauranteId, Pageable pageable) {
         Page<Pedido> pedidos = pedidoRepository.findByRestauranteId(restauranteId, pageable);
         return pedidos.map(this::converterParaRestauranteDTO);
@@ -111,14 +106,14 @@ public class PedidoService {
 
     public PedidoRestauranteDTO buscarPedidoRestaurante(Long restauranteId, Long pedidoId) {
         Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+            .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
         return converterParaRestauranteDTO(pedido);
     }
 
     public PedidoRestauranteDTO atualizarStatusPedido(Long restauranteId, Long pedidoId, String novoStatus) {
         Pedido pedido = pedidoRepository.findByIdAndRestauranteId(pedidoId, restauranteId)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
-        
+            .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
         pedido.setStatus(novoStatus);
         Pedido pedidoAtualizado = pedidoRepository.save(pedido);
         return converterParaRestauranteDTO(pedidoAtualizado);
@@ -126,19 +121,19 @@ public class PedidoService {
 
     private PedidoRestauranteDTO converterParaRestauranteDTO(Pedido pedido) {
         List<ItemPedidoDTO> itensDTO = listarItensPorPedido(pedido.getId());
-        
+
         Double total = itensDTO.stream()
-                .mapToDouble(item -> item.getPrecoUnitario().doubleValue() * item.getQuantidade())
-                .sum();
+            .mapToDouble(item -> item.getPrecoUnitario().doubleValue() * item.getQuantidade())
+            .sum();
 
         return new PedidoRestauranteDTO(
-                pedido.getId(),
-                pedido.getData(),
-                pedido.getStatus(),
-                pedido.getCliente().getNome(),
-                pedido.getCliente().getTelefone(),
-                itensDTO,
-                total
+            pedido.getId(),
+            pedido.getData(),
+            pedido.getStatus(),
+            pedido.getCliente().getNome(),
+            pedido.getCliente().getTelefone(),
+            itensDTO,
+            total
         );
     }
 }

@@ -1,10 +1,6 @@
 package com.larica.controller;
 
-import com.larica.dto.HistoricoPedidoDTO;
-import com.larica.dto.ItemPedidoDTO;
-import com.larica.dto.PedidoRequestDTO;
-import com.larica.dto.PedidoCriadoDTO;
-import com.larica.dto.PedidoRestauranteDTO;
+import com.larica.dto.*;
 import com.larica.entity.ItemPedido;
 import com.larica.entity.Pedido;
 import com.larica.entity.Produto;
@@ -41,7 +37,7 @@ public class PedidoController {
         }).collect(Collectors.toList());
 
         Pedido novoPedido = pedidoService.criarPedido(
-                dto.getUsuarioId(),
+                dto.getUsuarioId(), // 👈 Agora usando o ID recebido do DTO
                 dto.getRestauranteId(),
                 itensConvertidos
         );
