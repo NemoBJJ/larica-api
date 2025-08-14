@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/auth/donos")
+@RequestMapping("/auth/donos")
 public class DonoAuthController {
 
     private final DonoRestauranteRepository donoRepository;

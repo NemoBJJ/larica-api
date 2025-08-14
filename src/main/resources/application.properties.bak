@@ -1,0 +1,63 @@
+# =========================
+# BANCO DE DADOS MYSQL (CORRIGIDO)
+# =========================
+spring.datasource.url=jdbc:mysql://localhost:3306/larica_db?useSSL=false&useUnicode=true&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=010905Euja#
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# =========================
+# JPA / HIBERNATE (OTIMIZADO)
+# =========================
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true
+spring.jpa.properties.hibernate.dialect.storage_engine=innodb
+
+# =========================
+# LOG DE SQL COM PARÃ‚METROS
+# =========================
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+
+# =========================
+# CONFIGURAÃ‡Ã•ESe DO SERVIDOR
+# =========================
+spring.application.name=larica-api
+server.port=8086
+
+# =========================
+# LOCALIZAÃ‡ÃƒO E ENCODING (CORRIGIDO)
+# =========================
+spring.messages.basename=messages
+spring.messages.encoding=UTF-8
+spring.web.locale=pt_BR
+spring.web.locale-resolver=fixed
+
+# =========================
+# DEPURAÃ‡ÃƒO E MONITORAMENTO
+# =========================
+management.endpoints.web.exposure.include=*
+management.endpoint.health.show-details=always
+
+# =========================
+# THYMELEAFe (opcional)
+# =========================
+spring.thymeleaf.prefix=classpath:/templates/
+spring.thymeleaf.suffix=.html
+
+# =========================
+# MERCADO PAGO (NOVO)
+# =========================
+# Use variáveis de ambiente para não vazar segredo:
+#   MP_ACCESS_TOKEN=SEU_TOKEN_SANDBOX_OU_PROD
+#   MP_PUBLIC_KEY=SUA_PUBLIC_KEY
+# Em dev, aponte para sua URL pública (ngrok) para o webhook funcionar.
+
+mercadopago.access-token=${MP_ACCESS_TOKEN}
+mercadopago.public-key=${MP_PUBLIC_KEY}
+
+# URL pública do BACKEND (ex.: https://xxxx-xx-xx-xx.ngrok-free.app)
+app.base-url=${APP_BASE_URL:https://SEU_DOMINIO_API}
