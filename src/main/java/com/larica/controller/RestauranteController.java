@@ -4,7 +4,9 @@ import com.larica.dto.*;
 import com.larica.entity.Restaurante;
 import com.larica.entity.Usuario;
 import com.larica.mapper.*;
-import com.larica.service.*;
+import com.larica.service.GeoService;
+import com.larica.service.RestauranteService;
+import com.larica.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -16,35 +18,51 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/restaurantes")
 public class RestauranteController {
+
     private final RestauranteService restauranteService;
     private final UsuarioService usuarioService;
     private final RestauranteMapper restauranteMapper;
     private final UsuarioMapper usuarioMapper;
+    private final GeoService geoService;
 
     public RestauranteController(RestauranteService restauranteService,
-                              UsuarioService usuarioService,
-                              RestauranteMapper restauranteMapper,
-                              UsuarioMapper usuarioMapper) {
+                                 UsuarioService usuarioService,
+                                 RestauranteMapper restauranteMapper,
+                                 UsuarioMapper usuarioMapper,
+                                 GeoService geoService) {
         this.restauranteService = restauranteService;
         this.usuarioService = usuarioService;
         this.restauranteMapper = restauranteMapper;
         this.usuarioMapper = usuarioMapper;
+        this.geoService = geoService;
     }
 
-    // ========== ENDPOINTS DE RESTAURANTE ==========
     @PostMapping
     public ResponseEntity<RestauranteDTO> criarRestaurante(@RequestBody Restaurante restaurante) {
+        if (restaurante.getEndereco() != null && (restaurante.getLatitude() == null || restaurante.getLongitude() == null)) {
+            GeoService.Coordenadas coordenadas = geoService.obterCoordenadasPorEndereco(restaurante.getEndereco());
+            restaurante.setLatitude(coordenadas.getLatitude());
+            restaurante.setLongitude(coordenadas.getLongitude());
+        }
+
         Restaurante salvo = restauranteService.salvar(restaurante);
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(salvo.getId())
                 .toUri();
+
         return ResponseEntity.created(location).body(restauranteMapper.toDTO(salvo));
     }
 
     @PostMapping("/com-dono")
     public ResponseEntity<RestauranteComDonoDTO> criarRestauranteComDono(@RequestBody RestauranteCompletoDTO dto) {
+        if (dto.getEndereco() != null && (dto.getLatitude() == null || dto.getLongitude() == null)) {
+            GeoService.Coordenadas coordenadas = geoService.obterCoordenadasPorEndereco(dto.getEndereco());
+            dto.setLatitude(coordenadas.getLatitude());
+            dto.setLongitude(coordenadas.getLongitude());
+        }
+
         Restaurante restaurante = restauranteService.cadastrarRestauranteComDono(dto);
         return ResponseEntity.ok(restauranteMapper.toComDonoDTO(restaurante));
     }
@@ -60,14 +78,14 @@ public class RestauranteController {
     @GetMapping("/{id}")
     public ResponseEntity<RestauranteDTO> buscarRestaurante(@PathVariable Long id) {
         return ResponseEntity.ok(restauranteMapper.toDTO(
-            restauranteService.buscarPorId(id).orElseThrow()
+                restauranteService.buscarPorId(id).orElseThrow()
         ));
     }
 
     @GetMapping("/por-dono/{donoId}")
     public ResponseEntity<RestauranteDTO> buscarPorDono(@PathVariable Long donoId) {
         return ResponseEntity.ok(restauranteMapper.toDTO(
-            restauranteService.buscarPorDonoId(donoId)
+                restauranteService.buscarPorDonoId(donoId)
         ));
     }
 
@@ -77,7 +95,6 @@ public class RestauranteController {
         return ResponseEntity.noContent().build();
     }
 
-    // ========== ENDPOINTS DE USUÁRIO/DONO ==========
     @PostMapping("/donos")
     public ResponseEntity<UsuarioDTO> criarDono(@RequestBody UsuarioDTO dto) {
         Usuario salvo = usuarioService.salvar(usuarioMapper.toEntity(dto));
@@ -92,7 +109,7 @@ public class RestauranteController {
     @GetMapping("/donos/{id}")
     public ResponseEntity<UsuarioDTO> buscarDono(@PathVariable Long id) {
         return ResponseEntity.ok(usuarioMapper.toDTO(
-            usuarioService.buscarPorId(id).orElseThrow()
+                usuarioService.buscarPorId(id).orElseThrow()
         ));
     }
 
@@ -115,5 +132,19 @@ public class RestauranteController {
     public ResponseEntity<Void> deletarDono(@PathVariable Long id) {
         usuarioService.deletar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/proximos")
+    public ResponseEntity<List<RestauranteDTO>> listarProximos(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(defaultValue = "5") Double raioKm) {
+
+        List<Restaurante> proximos = restauranteService.buscarPorProximidade(lat, lng, raioKm);
+        List<RestauranteDTO> dtos = proximos.stream()
+                .map(restauranteMapper::toDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
     }
 }

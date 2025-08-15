@@ -44,6 +44,13 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
+        
+        <dependency>
+    <groupId>org.json</groupId>
+    <artifactId>json</artifactId>
+    <version>20240303</version> <!-- versão atual em 2025 -->
+        </dependency>
+
 
         <!-- MapStruct -->
         <dependency>

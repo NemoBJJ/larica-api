@@ -13,19 +13,25 @@ public class Restaurante {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(nullable = false)
     private String nome;
-    
+
     @Column(nullable = false)
     private String endereco;
-    
+
     private String telefone;
+
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dono_id", referencedColumnName = "id")
     private DonoRestaurante donoRestaurante;
-    
+
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Produto> cardapio = new ArrayList<>();
 
@@ -49,6 +55,12 @@ public class Restaurante {
 
     public String getTelefone() { return telefone; }
     public void setTelefone(String telefone) { this.telefone = telefone; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
     public DonoRestaurante getDonoRestaurante() { return donoRestaurante; }
     public void setDonoRestaurante(DonoRestaurante donoRestaurante) { this.donoRestaurante = donoRestaurante; }

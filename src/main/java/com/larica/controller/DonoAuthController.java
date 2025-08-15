@@ -4,6 +4,7 @@ import com.larica.entity.DonoRestaurante;
 import com.larica.entity.Restaurante;
 import com.larica.repository.DonoRestauranteRepository;
 import com.larica.repository.RestauranteRepository;
+import com.larica.service.GeoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,11 +18,14 @@ public class DonoAuthController {
 
     private final DonoRestauranteRepository donoRepository;
     private final RestauranteRepository restauranteRepository;
+    private final GeoService geoService;
 
     public DonoAuthController(DonoRestauranteRepository donoRepository,
-                               RestauranteRepository restauranteRepository) {
+                              RestauranteRepository restauranteRepository,
+                              GeoService geoService) {
         this.donoRepository = donoRepository;
         this.restauranteRepository = restauranteRepository;
+        this.geoService = geoService;
     }
 
     @PostMapping("/login")
@@ -75,7 +79,19 @@ public class DonoAuthController {
         restaurante.setNome(nomeRestaurante);
         restaurante.setEndereco(enderecoRestaurante);
         restaurante.setTelefone(telefoneRestaurante);
-        restaurante.setDonoRestaurante(novoDono); // JPA já cuida da FK
+        restaurante.setDonoRestaurante(novoDono);
+
+        // 3️⃣ Busca latitude e longitude via GeoService
+        try {
+            GeoService.Coordenadas coords = geoService.obterCoordenadasPorEndereco(enderecoRestaurante);
+            restaurante.setLatitude(coords.getLatitude());
+            restaurante.setLongitude(coords.getLongitude());
+        } catch (Exception e) {
+            System.err.println("Erro ao obter coordenadas: " + e.getMessage());
+            // Se preferir, você pode lançar erro e cancelar o cadastro
+            // return ResponseEntity.status(500).body("Erro ao buscar localização");
+        }
+
         restauranteRepository.save(restaurante);
 
         return ResponseEntity.ok("Dono e restaurante cadastrados com sucesso");

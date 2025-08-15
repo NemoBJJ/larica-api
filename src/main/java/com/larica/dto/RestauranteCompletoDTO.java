@@ -1,9 +1,12 @@
 package com.larica.dto;
 
 public class RestauranteCompletoDTO {
+
     private String nome;
     private String endereco;
     private String telefone;
+    private Double latitude;
+    private Double longitude;
     private UsuarioDTO dono;
 
     // Getters e Setters
@@ -29,6 +32,22 @@ public class RestauranteCompletoDTO {
 
     public void setTelefone(String telefone) {
         this.telefone = telefone;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 
     public UsuarioDTO getDono() {
