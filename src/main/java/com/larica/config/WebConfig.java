@@ -9,11 +9,22 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // Configuração padrão para sua API
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:3000")
-                .allowedMethods("*") // Permite TODOS os métodos, incluindo PATCH
+                .allowedOrigins(
+                    "http://localhost:3000", 
+                    "https://larica.neemindev.com"  // SEU FRONTEND
+                )
+                .allowedMethods("*")
                 .allowedHeaders("*")
                 .allowCredentials(true)
+                .maxAge(3600);
+        
+        // ✅ CONFIGURAÇÃO ESPECÍFICA PARA WEBHOOKS (MP não envia Origin header)
+        registry.addMapping("/webhooks/mercadopago/**")
+                .allowedOrigins("*") // Libera TODAS as origens
+                .allowedMethods("POST")
+                .allowedHeaders("*")
                 .maxAge(3600);
     }
 }

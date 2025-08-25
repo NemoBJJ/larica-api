@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/donos")
+@RequestMapping("/donos")
 public class DonoController {
 
     private final RestauranteService restauranteService;

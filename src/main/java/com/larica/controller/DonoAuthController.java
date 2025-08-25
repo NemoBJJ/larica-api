@@ -5,12 +5,14 @@ import com.larica.entity.Restaurante;
 import com.larica.repository.DonoRestauranteRepository;
 import com.larica.repository.RestauranteRepository;
 import com.larica.service.GeoService;
+import com.larica.security.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth/donos")
@@ -19,13 +21,16 @@ public class DonoAuthController {
     private final DonoRestauranteRepository donoRepository;
     private final RestauranteRepository restauranteRepository;
     private final GeoService geoService;
+    private final JwtUtil jwtUtil;
 
     public DonoAuthController(DonoRestauranteRepository donoRepository,
-                              RestauranteRepository restauranteRepository,
-                              GeoService geoService) {
+                             RestauranteRepository restauranteRepository,
+                             GeoService geoService,
+                             JwtUtil jwtUtil) {
         this.donoRepository = donoRepository;
         this.restauranteRepository = restauranteRepository;
         this.geoService = geoService;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/login")
@@ -40,11 +45,20 @@ public class DonoAuthController {
         }
 
         DonoRestaurante dono = donoOpt.get();
+
+        // GERAR TOKEN JWT PARA O DONO
+        String token = jwtUtil.generateToken(
+            dono.getEmail(),
+            dono.getId(),
+            List.of("DONO")
+        );
+
         return ResponseEntity.ok(Map.of(
-                "id", dono.getId(),
-                "nome", dono.getNome(),
-                "email", dono.getEmail(),
-                "telefone", dono.getTelefone()
+            "id", dono.getId(),
+            "nome", dono.getNome(),
+            "email", dono.getEmail(),
+            "telefone", dono.getTelefone(),
+            "token", token
         ));
     }
 
@@ -88,8 +102,6 @@ public class DonoAuthController {
             restaurante.setLongitude(coords.getLongitude());
         } catch (Exception e) {
             System.err.println("Erro ao obter coordenadas: " + e.getMessage());
-            // Se preferir, você pode lançar erro e cancelar o cadastro
-            // return ResponseEntity.status(500).body("Erro ao buscar localização");
         }
 
         restauranteRepository.save(restaurante);

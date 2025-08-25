@@ -40,55 +40,88 @@ public class WebhookController {
             String paymentId = dataId != null ? dataId : dataIdLegacy;
 
             if ("payment".equals(type) && paymentId != null) {
-                HttpHeaders h = new HttpHeaders();
-                h.setBearerAuth(accessToken);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(accessToken);
+                headers.set("Content-Type", "application/json");
 
-                ResponseEntity<Map> resp = http.exchange(
-                        "https://api.mercadopago.com/v1/payments/" + paymentId,
-                        HttpMethod.GET,
-                        new HttpEntity<>(h),
-                        Map.class
+                ResponseEntity<Map> response = http.exchange(
+                    "https://api.mercadopago.com/v1/payments/" + paymentId,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
                 );
 
-                if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-                    Map<String, Object> p = resp.getBody();
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    Map<String, Object> paymentData = response.getBody();
 
-                    String status = (String) p.get("status"); // approved, pending, cancelled, rejected...
-                    String externalRef = String.valueOf(p.get("external_reference"));
-                    String prefId = (String) p.get("order") != null ? null : null; // opcional, nem sempre vem aqui
-                    Long pedidoId = Long.valueOf(externalRef);
+                    String status = (String) paymentData.get("status");
+                    
+                    // 🔍 BUSCA O external_reference EM VÁRIOS LUGARES
+                    String externalRef = null;
+                    
+                    // 1° Tentativa: direto no root
+                    if (paymentData.containsKey("external_reference")) {
+                        externalRef = String.valueOf(paymentData.get("external_reference"));
+                    } 
+                    // 2° Tentativa: dentro de 'additional_info'
+                    else if (paymentData.containsKey("additional_info")) {
+                        Map<String, Object> additionalInfo = (Map<String, Object>) paymentData.get("additional_info");
+                        if (additionalInfo != null && additionalInfo.containsKey("external_reference")) {
+                            externalRef = String.valueOf(additionalInfo.get("external_reference"));
+                        }
+                    }
+                    // 3° Tentativa: dentro de 'metadata'  
+                    else if (paymentData.containsKey("metadata")) {
+                        Map<String, Object> metadata = (Map<String, Object>) paymentData.get("metadata");
+                        if (metadata != null && metadata.containsKey("external_reference")) {
+                            externalRef = String.valueOf(metadata.get("external_reference"));
+                        }
+                    }
+                    // 4° Tentativa: dentro de 'order'
+                    else if (paymentData.containsKey("order")) {
+                        Map<String, Object> order = (Map<String, Object>) paymentData.get("order");
+                        if (order != null && order.containsKey("external_reference")) {
+                            externalRef = String.valueOf(order.get("external_reference"));
+                        }
+                    }
+
+                    // Se não achou o external_reference, loga e sai
+                    if (externalRef == null || externalRef.equals("null")) {
+                        System.err.println("❌ external_reference NÃO ENCONTRADO no payload: " + paymentData);
+                        return ResponseEntity.ok().build();
+                    }
+
+                    Long pedidoId = Long.parseLong(externalRef);
 
                     // Atualiza Pedido
                     Pedido pedido = pedidoRepository.findById(pedidoId).orElse(null);
                     if (pedido != null) {
                         switch (status) {
                             case "approved" -> pedido.setStatus("PAGO");
-                            case "pending" -> pedido.setStatus("AGUARDANDO_PAGAMENTO");
-                            case "cancelled", "rejected" -> pedido.setStatus("CANCELADO");
-                            default -> { /* mantém */ }
+                            case "pending", "in_process" -> pedido.setStatus("AGUARDANDO_PAGAMENTO");
+                            case "cancelled", "rejected", "refunded" -> pedido.setStatus("CANCELADO");
+                            default -> pedido.setStatus("PENDENTE");
                         }
                         pedidoRepository.save(pedido);
                     }
 
                     // Atualiza Pagamento (busca por pedido)
-                    Optional<Pagamento> optPag = pagamentoRepository.findByPedidoId(pedidoId);
-                    if (optPag.isPresent()) {
-                        Pagamento pagamento = optPag.get();
-                        pagamento.setStatus(status != null ? status.toUpperCase() : null);
-                        pagamento.setMpPaymentId(String.valueOf(p.get("id")));
-                        pagamento.setLastNotification(p.toString());
-                        // preferenceId normalmente você tem salvo desde a criação;
-                        // se quiser reforçar por segurança, poderia tentar extrair do payload.
+                    Optional<Pagamento> optPagamento = pagamentoRepository.findByPedidoId(pedidoId);
+                    if (optPagamento.isPresent()) {
+                        Pagamento pagamento = optPagamento.get();
+                        pagamento.setStatus(status != null ? status.toUpperCase() : "PENDENTE");
+                        pagamento.setMpPaymentId(paymentId);
+                        pagamento.setLastNotification(paymentData.toString());
                         pagamentoRepository.save(pagamento);
                     }
                 }
             }
 
-            // SEMPRE responder 200
             return ResponseEntity.ok().build();
         } catch (Exception e) {
-            // logaria o erro aqui, mas para o MP não ficar reintentando sem fim, retornamos 200
-            return ResponseEntity.ok().build();
+            System.err.println("❌ Erro no webhook: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok().build(); // Sempre retorna 200 para o MP
         }
     }
 }
