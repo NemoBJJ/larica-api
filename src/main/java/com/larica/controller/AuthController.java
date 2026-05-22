@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.Optional;
 import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/auth/usuarios")
@@ -60,10 +61,14 @@ public class AuthController {
         if (usuarioRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.badRequest().body("E-mail já cadastrado");
         }
+        
         Usuario novoUsuario = new Usuario();
         novoUsuario.setNome(request.getNome());
         novoUsuario.setEmail(request.getEmail());
         novoUsuario.setSenha(request.getSenha());
+        novoUsuario.setTipo("CLIENTE");
+        novoUsuario.setDataCadastro(LocalDate.now());
+        
         usuarioRepository.save(novoUsuario);
         return ResponseEntity.ok("Usuário cadastrado com sucesso");
     }
