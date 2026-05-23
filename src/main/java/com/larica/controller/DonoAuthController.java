@@ -1,8 +1,10 @@
 package com.larica.controller;
 
 import com.larica.entity.DonoRestaurante;
+import com.larica.entity.Pedido;
 import com.larica.entity.Restaurante;
 import com.larica.repository.DonoRestauranteRepository;
+import com.larica.repository.PedidoRepository;
 import com.larica.repository.RestauranteRepository;
 import com.larica.service.GeoService;
 import com.larica.security.JwtUtil;
@@ -10,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.List;
@@ -20,15 +23,18 @@ public class DonoAuthController {
 
     private final DonoRestauranteRepository donoRepository;
     private final RestauranteRepository restauranteRepository;
+    private final PedidoRepository pedidoRepository;
     private final GeoService geoService;
     private final JwtUtil jwtUtil;
 
     public DonoAuthController(DonoRestauranteRepository donoRepository,
                              RestauranteRepository restauranteRepository,
+                             PedidoRepository pedidoRepository,
                              GeoService geoService,
                              JwtUtil jwtUtil) {
         this.donoRepository = donoRepository;
         this.restauranteRepository = restauranteRepository;
+        this.pedidoRepository = pedidoRepository;
         this.geoService = geoService;
         this.jwtUtil = jwtUtil;
     }
@@ -107,5 +113,33 @@ public class DonoAuthController {
         restauranteRepository.save(restaurante);
 
         return ResponseEntity.ok("Dono e restaurante cadastrados com sucesso");
+    }
+
+    /**
+     * Endpoint para gerar a rota do entregador
+     */
+    @GetMapping("/entregador/pedido/{pedidoId}/rota")
+    public ResponseEntity<?> getRotaEntregador(@PathVariable Long pedidoId) {
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+            .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
+        Map<String, Object> rota = new HashMap<>();
+        rota.put("pedidoId", pedido.getId());
+        rota.put("status", pedido.getStatus());
+        
+        // Dados do restaurante
+        rota.put("latRestaurante", pedido.getRestaurante().getLatitude());
+        rota.put("lngRestaurante", pedido.getRestaurante().getLongitude());
+        rota.put("enderecoRestaurante", pedido.getRestaurante().getEndereco());
+        
+        // Dados do cliente (endereço do usuário)
+        rota.put("enderecoCliente", pedido.getCliente().getEndereco());
+        
+        // TODO: Adicionar lat/lng do cliente quando tiver os campos na tabela pedidos
+        // Por enquanto, usa fallback (Natal/RN)
+        rota.put("latCliente", -5.7945);
+        rota.put("lngCliente", -35.2110);
+
+        return ResponseEntity.ok(rota);
     }
 }
