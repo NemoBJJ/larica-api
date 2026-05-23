@@ -52,7 +52,6 @@ public class DonoAuthController {
 
         DonoRestaurante dono = donoOpt.get();
 
-        // GERAR TOKEN JWT PARA O DONO
         String token = jwtUtil.generateToken(
             dono.getEmail(),
             dono.getId(),
@@ -70,13 +69,11 @@ public class DonoAuthController {
 
     @PostMapping("/register")
     public ResponseEntity<String> registerDonoComRestaurante(@RequestBody Map<String, String> payload) {
-        // Dados do dono
         String nomeDono = payload.get("nome");
         String emailDono = payload.get("email");
         String senhaDono = payload.get("senha");
         String telefoneDono = payload.get("telefone");
 
-        // Dados do restaurante
         String nomeRestaurante = payload.get("nomeRestaurante");
         String enderecoRestaurante = payload.get("enderecoRestaurante");
         String telefoneRestaurante = payload.get("telefoneRestaurante");
@@ -85,7 +82,6 @@ public class DonoAuthController {
             return ResponseEntity.badRequest().body("E-mail já cadastrado");
         }
 
-        // 1️⃣ Salva o dono
         DonoRestaurante novoDono = new DonoRestaurante();
         novoDono.setNome(nomeDono);
         novoDono.setEmail(emailDono);
@@ -94,14 +90,12 @@ public class DonoAuthController {
         novoDono.setDataCadastro(LocalDate.now());
         donoRepository.save(novoDono);
 
-        // 2️⃣ Cria e salva o restaurante vinculado ao dono
         Restaurante restaurante = new Restaurante();
         restaurante.setNome(nomeRestaurante);
         restaurante.setEndereco(enderecoRestaurante);
         restaurante.setTelefone(telefoneRestaurante);
         restaurante.setDonoRestaurante(novoDono);
 
-        // 3️⃣ Busca latitude e longitude via GeoService
         try {
             GeoService.Coordenadas coords = geoService.obterCoordenadasPorEndereco(enderecoRestaurante);
             restaurante.setLatitude(coords.getLatitude());
@@ -115,9 +109,6 @@ public class DonoAuthController {
         return ResponseEntity.ok("Dono e restaurante cadastrados com sucesso");
     }
 
-    /**
-     * Endpoint para gerar a rota do entregador
-     */
     @GetMapping("/entregador/pedido/{pedidoId}/rota")
     public ResponseEntity<?> getRotaEntregador(@PathVariable Long pedidoId) {
         Pedido pedido = pedidoRepository.findById(pedidoId)
@@ -127,16 +118,11 @@ public class DonoAuthController {
         rota.put("pedidoId", pedido.getId());
         rota.put("status", pedido.getStatus());
         
-        // Dados do restaurante
         rota.put("latRestaurante", pedido.getRestaurante().getLatitude());
         rota.put("lngRestaurante", pedido.getRestaurante().getLongitude());
         rota.put("enderecoRestaurante", pedido.getRestaurante().getEndereco());
         
-        // Dados do cliente (endereço do usuário)
-        rota.put("enderecoCliente", pedido.getCliente().getEndereco());
-        
-        // TODO: Adicionar lat/lng do cliente quando tiver os campos na tabela pedidos
-        // Por enquanto, usa fallback (Natal/RN)
+        rota.put("enderecoCliente", "Verificar no WhatsApp");
         rota.put("latCliente", -5.7945);
         rota.put("lngCliente", -35.2110);
 
