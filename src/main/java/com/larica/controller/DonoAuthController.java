@@ -118,13 +118,16 @@ public class DonoAuthController {
         rota.put("pedidoId", pedido.getId());
         rota.put("status", pedido.getStatus());
         
+        // Dados do restaurante
         rota.put("latRestaurante", pedido.getRestaurante().getLatitude());
         rota.put("lngRestaurante", pedido.getRestaurante().getLongitude());
         rota.put("enderecoRestaurante", pedido.getRestaurante().getEndereco());
         
-        rota.put("enderecoCliente", "Verificar no WhatsApp");
-        rota.put("latCliente", -5.7945);
-        rota.put("lngCliente", -35.2110);
+        // ✅ FALLBACK REMOVIDO! Agora retorna null se não tiver localização
+        // O frontend vai usar o localStorage para preencher o endereço do cliente
+        rota.put("enderecoCliente", null);
+        rota.put("latCliente", null);
+        rota.put("lngCliente", null);
 
         return ResponseEntity.ok(rota);
     }
