@@ -26,6 +26,10 @@ public class Usuario {
 
     @Column(nullable = false, name = "data_cadastro")
     private LocalDate dataCadastro;
+    
+    // 🔥 NOVO CAMPO - ENDEREÇO
+    @Column(length = 500)
+    private String endereco;
 
     // 🔥 REMOVIDO: relação inexistente com DonoRestaurante
     // @OneToOne(mappedBy = "usuario")
@@ -63,4 +67,8 @@ public class Usuario {
 
     public LocalDate getDataCadastro() { return dataCadastro; }
     public void setDataCadastro(LocalDate dataCadastro) { this.dataCadastro = dataCadastro; }
+    
+    // 🔥 NOVO GETTER/SETTER
+    public String getEndereco() { return endereco; }
+    public void setEndereco(String endereco) { this.endereco = endereco; }
 }

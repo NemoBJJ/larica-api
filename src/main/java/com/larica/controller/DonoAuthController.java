@@ -3,6 +3,7 @@ package com.larica.controller;
 import com.larica.entity.DonoRestaurante;
 import com.larica.entity.Pedido;
 import com.larica.entity.Restaurante;
+import com.larica.entity.Usuario;
 import com.larica.repository.DonoRestauranteRepository;
 import com.larica.repository.PedidoRepository;
 import com.larica.repository.RestauranteRepository;
@@ -51,6 +52,15 @@ public class DonoAuthController {
         }
 
         DonoRestaurante dono = donoOpt.get();
+        
+        // 🔥 BUSCA O RESTAURANTE PELO ID DO DONO USANDO QUERY NATIVA
+        Optional<Restaurante> restauranteOpt = restauranteRepository.findById(dono.getId());
+        
+        if (restauranteOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Restaurante não encontrado para este dono");
+        }
+        
+        Restaurante restaurante = restauranteOpt.get();
 
         String token = jwtUtil.generateToken(
             dono.getEmail(),
@@ -63,6 +73,7 @@ public class DonoAuthController {
             "nome", dono.getNome(),
             "email", dono.getEmail(),
             "telefone", dono.getTelefone(),
+            "restauranteId", restaurante.getId(),
             "token", token
         ));
     }
@@ -114,18 +125,22 @@ public class DonoAuthController {
         Pedido pedido = pedidoRepository.findById(pedidoId)
             .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
 
+        Usuario cliente = pedido.getCliente();
+
         Map<String, Object> rota = new HashMap<>();
         rota.put("pedidoId", pedido.getId());
         rota.put("status", pedido.getStatus());
         
-        // Dados do restaurante
         rota.put("latRestaurante", pedido.getRestaurante().getLatitude());
         rota.put("lngRestaurante", pedido.getRestaurante().getLongitude());
         rota.put("enderecoRestaurante", pedido.getRestaurante().getEndereco());
         
-        // ✅ FALLBACK REMOVIDO! Agora retorna null se não tiver localização
-        // O frontend vai usar o localStorage para preencher o endereço do cliente
-        rota.put("enderecoCliente", null);
+        if (cliente != null) {
+            rota.put("enderecoCliente", cliente.getEndereco());
+        } else {
+            rota.put("enderecoCliente", null);
+        }
+        
         rota.put("latCliente", null);
         rota.put("lngCliente", null);
 

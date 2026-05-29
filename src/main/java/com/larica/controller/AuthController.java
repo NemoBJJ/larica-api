@@ -66,6 +66,8 @@ public class AuthController {
         novoUsuario.setNome(request.getNome());
         novoUsuario.setEmail(request.getEmail());
         novoUsuario.setSenha(request.getSenha());
+        novoUsuario.setTelefone(request.getTelefone());
+        novoUsuario.setEndereco(request.getEndereco());
         novoUsuario.setTipo("CLIENTE");
         novoUsuario.setDataCadastro(LocalDate.now());
         
