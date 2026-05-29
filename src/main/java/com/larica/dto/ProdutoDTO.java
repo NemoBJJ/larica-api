@@ -7,15 +7,17 @@ public class ProdutoDTO {
     private String nome;
     private String descricao;
     private BigDecimal preco;
+    private String imagemUrl;  // 🔥 ADICIONADO
 
     public ProdutoDTO() {
     }
 
-    public ProdutoDTO(Long id, String nome, String descricao, BigDecimal preco) {
+    public ProdutoDTO(Long id, String nome, String descricao, BigDecimal preco, String imagemUrl) {
         this.id = id;
         this.nome = nome;
         this.descricao = descricao;
         this.preco = preco;
+        this.imagemUrl = imagemUrl;
     }
 
     public Long getId() {
@@ -34,6 +36,10 @@ public class ProdutoDTO {
         return preco;
     }
 
+    public String getImagemUrl() {
+        return imagemUrl;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -48,5 +54,9 @@ public class ProdutoDTO {
 
     public void setPreco(BigDecimal preco) {
         this.preco = preco;
+    }
+
+    public void setImagemUrl(String imagemUrl) {
+        this.imagemUrl = imagemUrl;
     }
 }

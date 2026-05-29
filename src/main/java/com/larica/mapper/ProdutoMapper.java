@@ -8,12 +8,15 @@ public class ProdutoMapper {
     public static ProdutoDTO toDTO(Produto produto) {
         if (produto == null) return null;
 
-        return new ProdutoDTO(
+        ProdutoDTO dto = new ProdutoDTO(
             produto.getId(),
             produto.getNome(),
             produto.getDescricao(),
-            produto.getPreco()
+            produto.getPreco(),
+            produto.getImagemUrl()  // 🔥 ADICIONADO
         );
+        
+        return dto;
     }
 
     public static Produto toEntity(ProdutoDTO dto) {
@@ -24,6 +27,7 @@ public class ProdutoMapper {
         produto.setNome(dto.getNome());
         produto.setDescricao(dto.getDescricao());
         produto.setPreco(dto.getPreco());
+        produto.setImagemUrl(dto.getImagemUrl());  // 🔥 ADICIONADO
 
         return produto;
     }
