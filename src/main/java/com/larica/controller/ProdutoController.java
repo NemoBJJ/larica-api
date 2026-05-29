@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -37,7 +38,7 @@ public class ProdutoController {
         return ResponseEntity.ok(dtos);
     }
 
-    // NOVO: cria produto (nome, descrição, preço) para um restaurante
+    // EXISTENTE: cria produto (nome, descrição, preço) para um restaurante
     @PostMapping("/por-restaurante/{restauranteId}")
     public ResponseEntity<ProdutoDTO> criarProduto(@PathVariable Long restauranteId,
                                                    @RequestBody ProdutoDTO dto) {
@@ -48,10 +49,32 @@ public class ProdutoController {
         novo.setNome(dto.getNome());
         novo.setDescricao(dto.getDescricao());
         novo.setPreco(dto.getPreco());
-        // sem campo 'disponivel' aqui
         novo.setRestaurante(restaurante);
 
         Produto salvo = produtoService.salvar(novo);
         return ResponseEntity.status(HttpStatus.CREATED).body(ProdutoMapper.toDTO(salvo));
+    }
+
+    // 🔥 NOVO: salvar imagem do produto
+    @PatchMapping("/{id}/imagem")
+    public ResponseEntity<?> salvarImagem(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        Produto produto = produtoService.buscarPorId(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
+        
+        produto.setImagemUrl(payload.get("imagemUrl"));
+        produto.setImagemPublicId(payload.get("imagemPublicId"));
+        produtoService.salvar(produto);
+        
+        return ResponseEntity.ok(Map.of(
+            "message", "Imagem salva com sucesso",
+            "imagemUrl", produto.getImagemUrl()
+        ));
+    }
+
+    // EXISTENTE: deletar produto
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarProduto(@PathVariable Long id) {
+        produtoService.deletar(id);
+        return ResponseEntity.noContent().build();
     }
 }

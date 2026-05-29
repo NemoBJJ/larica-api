@@ -23,6 +23,13 @@ public class Produto {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurante_id", nullable = false)
     private Restaurante restaurante;
+    
+    // 🔥 CAMPOS DE IMAGEM - ADICIONADOS
+    @Column(length = 500)
+    private String imagemUrl;
+    
+    @Column(length = 500)
+    private String imagemPublicId;
 
     // Construtores
     public Produto() {
@@ -74,6 +81,23 @@ public class Produto {
 
     public void setRestaurante(Restaurante restaurante) {
         this.restaurante = restaurante;
+    }
+    
+    // 🔥 GETTERS E SETTERS DAS IMAGENS
+    public String getImagemUrl() {
+        return imagemUrl;
+    }
+
+    public void setImagemUrl(String imagemUrl) {
+        this.imagemUrl = imagemUrl;
+    }
+
+    public String getImagemPublicId() {
+        return imagemPublicId;
+    }
+
+    public void setImagemPublicId(String imagemPublicId) {
+        this.imagemPublicId = imagemPublicId;
     }
 
     // equals e hashCode
