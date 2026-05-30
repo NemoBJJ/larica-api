@@ -37,6 +37,13 @@ public class RestaurantePedidoController {
             @PathVariable Long restauranteId,
             @PathVariable Long pedidoId,
             @RequestParam String status) {
-        return ResponseEntity.ok(pedidoService.atualizarStatusPedido(restauranteId, pedidoId, status));
+        
+        // 🔥 SE FOR MARCAR COMO ENTREGUE, TAMBÉM MARCA COMO PAGO
+        if ("ENTREGUE".equals(status)) {
+            pedidoService.atualizarStatusPedido(restauranteId, pedidoId, "PAGO");
+        }
+        
+        PedidoRestauranteDTO atualizado = pedidoService.atualizarStatusPedido(restauranteId, pedidoId, status);
+        return ResponseEntity.ok(atualizado);
     }
 }

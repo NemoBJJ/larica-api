@@ -132,12 +132,15 @@ public class PedidoService {
             .mapToDouble(item -> item.getPrecoUnitario().doubleValue() * item.getQuantidade())
             .sum();
 
+        // 🔥 PEGA O TELEFONE DO CLIENTE (já estava, mas garantindo)
+        String telefoneCliente = pedido.getCliente() != null ? pedido.getCliente().getTelefone() : "";
+
         return new PedidoRestauranteDTO(
             pedido.getId(),
             pedido.getData(),
             pedido.getStatus(),
-            pedido.getCliente().getNome(),
-            pedido.getCliente().getTelefone(),
+            pedido.getCliente() != null ? pedido.getCliente().getNome() : "Cliente",
+            telefoneCliente,
             itensDTO,
             total
         );
