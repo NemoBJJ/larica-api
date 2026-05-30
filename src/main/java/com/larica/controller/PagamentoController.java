@@ -2,10 +2,14 @@ package com.larica.controller;
 
 import com.larica.dto.CheckoutPreferenceResponse;
 import com.larica.entity.Pagamento;
+import com.larica.entity.Pedido;
 import com.larica.repository.PagamentoRepository;
+import com.larica.repository.PedidoRepository;
 import com.larica.service.PagamentoService;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -18,14 +22,21 @@ public class PagamentoController {
 
     private final PagamentoService pagamentoService;
     private final PagamentoRepository pagamentoRepository;
+    private final PedidoRepository pedidoRepository;
+    private final RestTemplate http;
+
+    @Value("${mercadopago.access-token}")
+    private String accessToken;
 
     public PagamentoController(PagamentoService pagamentoService,
-                               PagamentoRepository pagamentoRepository) {
+                               PagamentoRepository pagamentoRepository,
+                               PedidoRepository pedidoRepository) {
         this.pagamentoService = pagamentoService;
         this.pagamentoRepository = pagamentoRepository;
+        this.pedidoRepository = pedidoRepository;
+        this.http = new RestTemplate();
     }
 
-    // Prova imediata: /users/me
     @GetMapping("/mp/ping")
     public ResponseEntity<?> ping() {
         try {
@@ -35,7 +46,6 @@ public class PagamentoController {
         }
     }
 
-    // Cobra R$5,00 real e retorna init_point
     @PostMapping("/teste-r1")
     public ResponseEntity<?> criarPreferenceR1() {
         try {
@@ -46,7 +56,6 @@ public class PagamentoController {
         }
     }
 
-    // Cria preferência por pedido (soma itens do banco)
     @PostMapping("/mercadopago/preference/{pedidoId}")
     public ResponseEntity<?> criarPreference(@PathVariable Long pedidoId) {
         try {
@@ -57,7 +66,6 @@ public class PagamentoController {
         }
     }
 
-    // Consulta tentativas/erros por pedidoId numérico
     @GetMapping("/mercadopago/search")
     public ResponseEntity<?> buscarTentativas(@RequestParam Long pedidoId) {
         try {
@@ -67,7 +75,6 @@ public class PagamentoController {
         }
     }
 
-    // Consulta tentativas/erros por external_reference string (ex.: "teste-r1")
     @GetMapping("/mercadopago/search/ref")
     public ResponseEntity<?> buscarPorRef(@RequestParam String ref) {
         try {
@@ -77,7 +84,6 @@ public class PagamentoController {
         }
     }
 
-    // Consulta merchant_order por preferenceId (mostra payments vinculados)
     @GetMapping("/mercadopago/merchant-order")
     public ResponseEntity<?> merchantOrderPorPreference(@RequestParam String preferenceId) {
         try {
@@ -87,7 +93,6 @@ public class PagamentoController {
         }
     }
 
-    // Pagamentos de HOJE (timezone São Paulo) no formato que o MP exige
     @GetMapping("/mercadopago/payments/today")
     public ResponseEntity<?> pagamentosHoje(@RequestParam(required = false) Integer limit) {
         try {
@@ -98,8 +103,8 @@ public class PagamentoController {
             ZonedDateTime start = now.toLocalDate().atStartOfDay(zone);
             ZonedDateTime end = start.withHour(23).withMinute(59).withSecond(59).withNano(999_000_000);
 
-            String beginIso = start.format(fmt); // ex: 2025-08-13T00:00:00.000-03:00
-            String endIso   = end.format(fmt);   // ex: 2025-08-13T23:59:59.999-03:00
+            String beginIso = start.format(fmt);
+            String endIso = end.format(fmt);
 
             int lim = (limit != null && limit > 0) ? limit : 50;
             return ResponseEntity.ok(pagamentoService.buscarPagamentosPorData(beginIso, endIso, lim));
@@ -108,7 +113,6 @@ public class PagamentoController {
         }
     }
 
-    // Força sincronização sem webhook
     @PostMapping("/mp/sync")
     public ResponseEntity<?> sync(@RequestParam("payment_id") String paymentId) {
         try {
@@ -119,7 +123,66 @@ public class PagamentoController {
         }
     }
 
-    // Retornos simples (dev)
+    // 🔥 NOVO ENDPOINT - Sincronizar pedido pelo ID
+    @PostMapping("/sync/pedido/{pedidoId}")
+    public ResponseEntity<?> syncPorPedido(@PathVariable Long pedidoId) {
+        try {
+            Pedido pedido = pedidoRepository.findById(pedidoId).orElse(null);
+            if (pedido == null) {
+                return ResponseEntity.status(404).body(Map.of("erro", "Pedido não encontrado"));
+            }
+
+            String url = "https://api.mercadopago.com/v1/payments/search?external_reference=" + pedidoId;
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            
+            ResponseEntity<Map> response = http.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                Map.class
+            );
+            
+            if (response.getBody() != null) {
+                List<Map<String, Object>> results = (List<Map<String, Object>>) response.getBody().get("results");
+                
+                if (results != null && !results.isEmpty()) {
+                    Map<String, Object> payment = results.get(0);
+                    String status = (String) payment.get("status");
+                    
+                    if ("approved".equals(status)) {
+                        pedido.setStatus("PAGO");
+                        pedidoRepository.save(pedido);
+                        return ResponseEntity.ok(Map.of(
+                            "ok", true,
+                            "status", "PAGO",
+                            "message", "Pagamento confirmado!"
+                        ));
+                    } else {
+                        return ResponseEntity.ok(Map.of(
+                            "ok", false,
+                            "status", status,
+                            "message", "Pagamento ainda não aprovado. Status: " + status
+                        ));
+                    }
+                } else {
+                    return ResponseEntity.ok(Map.of(
+                        "ok", false,
+                        "status", "NAO_ENCONTRADO",
+                        "message", "Nenhum pagamento encontrado para este pedido"
+                    ));
+                }
+            }
+            
+            return ResponseEntity.ok(Map.of("ok", false, "message", "Erro ao consultar Mercado Pago"));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
+        }
+    }
+
     @GetMapping("/retorno/sucesso")
     public ResponseEntity<?> sucesso(@RequestParam(required = false, name = "payment_id") String paymentId,
                                      @RequestParam(required = false, name = "preference_id") String preferenceId,
@@ -136,7 +199,6 @@ public class PagamentoController {
     @GetMapping("/retorno/pendente")
     public String pendente() { return "Pagamento pendente"; }
 
-    // Consultas
     @GetMapping("/{id}")
     public ResponseEntity<Pagamento> getById(@PathVariable Long id) {
         return pagamentoRepository.findById(id)
